@@ -1,60 +1,78 @@
-<div class="canvas-editor-container">
-  <div class="toolbar">
-    <div class="tool-group">
-      <button class="tool-button" [class.active]="currentTool === 'brush'" (click)="selectTool('brush')" title="Pinsel">
-        <span class="tool-icon">🖌️</span>
-      </button>
-      <button class="tool-button" [class.active]="currentTool === 'eraser'" (click)="selectTool('eraser')"
-        title="Radierer">
-        <span class="tool-icon">🧽</span>
-      </button>
-      <button class="tool-button" [class.active]="currentTool === 'line'" (click)="selectTool('line')" title="Linie">
-        <span class="tool-icon">↗️</span>
-      </button>
-      <button class="tool-button" [class.active]="currentTool === 'rectangle'" (click)="selectTool('rectangle')"
-        title="Rechteck">
-        <span class="tool-icon">🔲</span>
-      </button>
-      <button class="tool-button" [class.active]="currentTool === 'circle'" (click)="selectTool('circle')"
-        title="Kreis">
-        <span class="tool-icon">⭕</span>
-      </button>
-    </div>
-
-    <div class="tool-group">
-      <div class="color-picker">
-        <label for="stroke-color">Farbe:</label>
-        <input type="color" id="stroke-color" [value]="currentColor" (change)="updateColor($event)">
+<div class="canvas-editor-container" [class.fullscreen]="isFullscreen">
+  <div class="toolbar-container">
+    <div class="toolbar" [class.responsive-toolbar]="isFullscreen">
+      <!-- Zeichenwerkzeuge -->
+      <div class="tool-group drawing-tools">
+        <button class="tool-button" (click)="selectTool('brush')" [class.active]="currentTool === 'brush'"
+          title="Pinsel">
+          <i class="fa fa-paint-brush"></i>
+        </button>
+        <button class="tool-button" (click)="selectTool('eraser')" [class.active]="currentTool === 'eraser'"
+          title="Radierer">
+          <i class="fa fa-eraser"></i>
+        </button>
+        <button class="tool-button" (click)="selectTool('line')" [class.active]="currentTool === 'line'" title="Linie">
+          <i class="fa fa-minus"></i>
+        </button>
+        <button class="tool-button" (click)="selectTool('rectangle')" [class.active]="currentTool === 'rectangle'"
+          title="Rechteck">
+          <i class="fa fa-square-o"></i>
+        </button>
+        <button class="tool-button" (click)="selectTool('circle')" [class.active]="currentTool === 'circle'"
+          title="Kreis">
+          <i class="fa fa-circle-o"></i>
+        </button>
       </div>
 
-      <div class="stroke-width">
-        <label for="stroke-width">Stärke:</label>
-        <input type="range" id="stroke-width" min="1" max="50" [value]="currentWidth" (input)="updateWidth($event)">
-        <span class="width-display">{{currentWidth}}px</span>
+      <!-- Farbe und Strichbreite -->
+      <div class="tool-group color-width-tools">
+        <div class="color-picker">
+          <input type="color" [value]="currentColor" (input)="updateColor($event)" title="Farbe auswählen">
+        </div>
+        <div class="stroke-width">
+          <input type="range" min="1" max="50" [value]="currentWidth" (input)="updateWidth($event)"
+            title="Strichbreite">
+          <span class="width-display">{{currentWidth}}px</span>
+        </div>
       </div>
-    </div>
 
-    <div class="tool-group">
-      <button class="action-button" (click)="clear()" title="Löschen">
-        <span class="action-icon">🗑️</span>
-      </button>
-      <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig">
-        <span class="action-icon">↩️</span>
-      </button>
-      <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederholen">
-        <span class="action-icon">↪️</span>
-      </button>
-      <button class="action-button" (click)="saveDrawing()" title="Speichern">
-        <span class="action-icon">💾</span>
-      </button>
+      <!-- Aktionen -->
+      <div class="tool-group action-tools">
+        <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig">
+          <i class="fa fa-undo"></i>
+        </button>
+        <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederherstellen">
+          <i class="fa fa-repeat"></i>
+        </button>
+        <button class="action-button" (click)="clear()" title="Löschen">
+          <i class="fa fa-trash"></i>
+        </button>
+        <button class="action-button" (click)="saveDrawing()" title="Speichern">
+          <i class="fa fa-save"></i>
+        </button>
+      </div>
+
+      <!-- Fullscreen Toggle -->
+      <div class="tool-group fullscreen-tool">
+        <button class="action-button fullscreen-toggle" (click)="toggleFullscreen()" title="Vollbild umschalten">
+          <i class="fa" [class.fa-expand]="!isFullscreen" [class.fa-compress]="isFullscreen"></i>
+        </button>
+      </div>
     </div>
   </div>
 
-  <div class="canvas-wrapper">
-    <canvas #canvas (mousedown)="onMouseDown($event)" (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)"
-      (mouseleave)="onMouseLeave()" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)"
-      (touchend)="onTouchEnd($event)" [width]="canvasWidth" [height]="canvasHeight">
-      Ihr Browser unterstützt das Canvas-Element nicht.
+  <!-- Canvas-Container mit optimierter Größe -->
+  <div class="canvas-container">
+    <canvas #canvas [width]="canvasWidth" [height]="canvasHeight" (mousedown)="onMouseDown($event)"
+      (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
+      (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)">
     </canvas>
+  </div>
+
+  <!-- Statusanzeige im Fullscreen-Modus ausblenden -->
+  <div class="status-bar" *ngIf="!isFullscreen">
+    <span>Werkzeug: {{currentTool}}</span>
+    <span>Farbe: {{currentColor}}</span>
+    <span>Breite: {{currentWidth}}px</span>
   </div>
 </div>

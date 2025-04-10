@@ -48,6 +48,9 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   /** Kann eine rückgängig gemachte Aktion wiederhergestellt werden? */
   canRedo = false;
 
+  /** Fullscreen-Modus aktiv? */
+  isFullscreen = false;
+
   /** Subscription für Settings-Updates */
   private settingsSubscription: Subscription;
 
@@ -56,6 +59,8 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
 
   /** Speichert den aktuellen Zeichnungszustand */
   private currentDrawingLines: DrawingLine[] = [];
+
+  private resizeTimeout: any;
 
   constructor(private readonly drawingService: DrawingService) {
     // Subscriptions für Settings und Drawing initialisieren
@@ -110,26 +115,72 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    */
   @HostListener('window:resize')
   onResize(): void {
-    this.resizeCanvas();
+    // Verzögerung hinzufügen, um mehrere schnelle Aufrufe zu vermeiden
+    if (this.resizeTimeout) {
+      clearTimeout(this.resizeTimeout);
+    }
+
+    this.resizeTimeout = setTimeout(() => {
+      this.resizeCanvas();
+    }, 100);
+  }
+
+  /**
+   * Beim Drücken der Escape-Taste Fullscreen beenden
+   */
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+    if (this.isFullscreen) {
+      this.toggleFullscreen();
+    }
   }
 
   /**
    * Canvas-Größe an das Eltern-Element anpassen
    */
   private resizeCanvas(): void {
-    const container = this.canvasRef.nativeElement.parentElement;
-    if (container) {
-      // Wir behalten das Seitenverhältnis bei
-      const containerWidth = container.clientWidth;
-      // Hier können wir entweder eine feste Höhe oder ein Seitenverhältnis verwenden
-      const containerHeight = Math.min(window.innerHeight * 0.6, containerWidth * 0.75);
+    setTimeout(() => {
+      const container = this.canvasRef?.nativeElement.parentElement;
+      if (!container) return;
 
-      this.canvasWidth = containerWidth;
-      this.canvasHeight = containerHeight;
+      // Berechne die tatsächlich verfügbare Größe des Containers
+      const containerStyle = window.getComputedStyle(container);
+      const paddingX = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
+      const paddingY = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+      const borderX = parseFloat(containerStyle.borderLeftWidth) + parseFloat(containerStyle.borderRightWidth);
+      const borderY = parseFloat(containerStyle.borderTopWidth) + parseFloat(containerStyle.borderBottomWidth);
+
+      // Berechne die tatsächlich verfügbare Breite und Höhe
+      const availableWidth = container.clientWidth - paddingX - borderX;
+
+      let availableHeight: number;
+
+      if (this.isFullscreen) {
+        // Im Fullscreen: Berechne die verfügbare Höhe basierend auf dem Viewport
+        const toolbarHeight = document.querySelector('.toolbar-container')?.clientHeight || 80;
+        availableHeight = window.innerHeight - toolbarHeight - 10; // 10px Puffer
+      } else {
+        // Im normalen Modus
+        const parentHeight = container.clientHeight - paddingY - borderY;
+        availableHeight = Math.min(window.innerHeight * 0.6, parentHeight);
+
+        // Seitenverhältnis beibehalten (4:3, 16:9 usw.)
+        // Du kannst das gewünschte Seitenverhältnis hier anpassen
+        const aspectRatio = 4 / 3;
+        const heightByAspectRatio = availableWidth / aspectRatio;
+
+        // Wähle das Minimum aus berechneter Höhe und Höhe nach Seitenverhältnis
+        availableHeight = Math.min(availableHeight, heightByAspectRatio);
+      }
+
+      // Canvas-Größe setzen
+      this.canvasWidth = Math.floor(availableWidth);
+      this.canvasHeight = Math.floor(availableHeight);
 
       // Nach der Größenänderung alles neu zeichnen
       this.redrawCanvas();
-    }
+
+    }, 0); // setTimeout mit 0ms verzögerung stellt sicher, dass dies nach dem DOM-Rendering ausgeführt wird
   }
 
   /**
@@ -220,6 +271,24 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Fullscreen-Modus umschalten
+   */
+  toggleFullscreen(): void {
+    this.isFullscreen = !this.isFullscreen;
+
+    // Klasse zum body Element hinzufügen/entfernen für globale Styling-Anpassungen
+    document.body.classList.toggle('canvas-fullscreen-active', this.isFullscreen);
+
+    // Die Canvas-Größe anpassen und den Inhalt neu zeichnen
+    setTimeout(() => {
+      this.resizeCanvas();
+
+      // Bei Fullscreen-Wechsel einen Event auslösen, damit Container-Elemente aktualisiert werden
+      window.dispatchEvent(new Event('resize'));
+    }, 50);
+  }
+
+  /**
    * Mausklick-Handler für den Zeichenbeginn
    * @param event Das Maus-Event
    */
@@ -291,6 +360,9 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     event.preventDefault(); // Standard-Touch-Verhalten verhindern
     if (event.touches.length === 1) {
       const touch = event.touches[0];
+      const canvas = this.canvasRef.nativeElement;
+      const rect = canvas.getBoundingClientRect();
+
       const mouseEvent = new MouseEvent('mousedown', {
         clientX: touch.clientX,
         clientY: touch.clientY
@@ -305,8 +377,9 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    */
   onTouchMove(event: TouchEvent): void {
     event.preventDefault(); // Standard-Touch-Verhalten verhindern
-    if (event.touches.length === 1) {
+    if (event.touches.length === 1 && this.isDrawing) {
       const touch = event.touches[0];
+
       const mouseEvent = new MouseEvent('mousemove', {
         clientX: touch.clientX,
         clientY: touch.clientY
