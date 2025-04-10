@@ -1,0 +1,60 @@
+<div class="canvas-editor-container">
+  <div class="toolbar">
+    <div class="tool-group">
+      <button class="tool-button" [class.active]="currentTool === 'brush'" (click)="selectTool('brush')" title="Pinsel">
+        <span class="tool-icon">🖌️</span>
+      </button>
+      <button class="tool-button" [class.active]="currentTool === 'eraser'" (click)="selectTool('eraser')"
+        title="Radierer">
+        <span class="tool-icon">🧽</span>
+      </button>
+      <button class="tool-button" [class.active]="currentTool === 'line'" (click)="selectTool('line')" title="Linie">
+        <span class="tool-icon">↗️</span>
+      </button>
+      <button class="tool-button" [class.active]="currentTool === 'rectangle'" (click)="selectTool('rectangle')"
+        title="Rechteck">
+        <span class="tool-icon">🔲</span>
+      </button>
+      <button class="tool-button" [class.active]="currentTool === 'circle'" (click)="selectTool('circle')"
+        title="Kreis">
+        <span class="tool-icon">⭕</span>
+      </button>
+    </div>
+
+    <div class="tool-group">
+      <div class="color-picker">
+        <label for="stroke-color">Farbe:</label>
+        <input type="color" id="stroke-color" [value]="currentColor" (change)="updateColor($event)">
+      </div>
+
+      <div class="stroke-width">
+        <label for="stroke-width">Stärke:</label>
+        <input type="range" id="stroke-width" min="1" max="50" [value]="currentWidth" (input)="updateWidth($event)">
+        <span class="width-display">{{currentWidth}}px</span>
+      </div>
+    </div>
+
+    <div class="tool-group">
+      <button class="action-button" (click)="clear()" title="Löschen">
+        <span class="action-icon">🗑️</span>
+      </button>
+      <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig">
+        <span class="action-icon">↩️</span>
+      </button>
+      <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederholen">
+        <span class="action-icon">↪️</span>
+      </button>
+      <button class="action-button" (click)="saveDrawing()" title="Speichern">
+        <span class="action-icon">💾</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="canvas-wrapper">
+    <canvas #canvas (mousedown)="onMouseDown($event)" (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)"
+      (mouseleave)="onMouseLeave()" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)"
+      (touchend)="onTouchEnd($event)" [width]="canvasWidth" [height]="canvasHeight">
+      Ihr Browser unterstützt das Canvas-Element nicht.
+    </canvas>
+  </div>
+</div>

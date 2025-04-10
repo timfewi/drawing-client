@@ -1,0 +1,43 @@
+<header>
+  <div class="container header-container">
+    <a routerLink="/" class="logo">
+      <span class="logo-icon">🎨</span>
+      <span>Drawing App</span>
+    </a>
+
+    <button class="mobile-menu-toggle" (click)="toggleMobileMenu()" aria-label="Toggle menu">
+      <span>☰</span>
+    </button>
+
+    <nav>
+      <ul [class.visible]="mobileMenuVisible">
+        <li><a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">Home</a></li>
+        <li><a routerLink="/gallery" routerLinkActive="active-link">Gallery</a></li>
+        <li><a routerLink="/about" routerLinkActive="active-link">About</a></li>
+
+        <!-- Nicht angemeldet -->
+        <li *ngIf="!(currentUser$ | async)">
+          <a routerLink="/login" routerLinkActive="active-link" class="auth-link">Login</a>
+        </li>
+
+        <!-- Angemeldet -->
+        <li *ngIf="currentUser$ | async" class="user-menu">
+          <a (click)="toggleUserMenu()" class="user-menu-toggle">
+            <img *ngIf="(currentUser$ | async)?.photoURL" [src]="(currentUser$ | async)?.photoURL" alt="Profile"
+              class="user-avatar">
+            <span *ngIf="!(currentUser$ | async)?.photoURL" class="user-avatar-placeholder">
+              {{ (currentUser$ | async)?.displayName?.charAt(0) || 'U' }}
+            </span>
+            <span class="user-name">{{ (currentUser$ | async)?.displayName }}</span>
+            <span class="dropdown-arrow">▼</span>
+          </a>
+          <ul class="user-dropdown" [class.visible]="userMenuVisible">
+            <li><a routerLink="/profile">Profil</a></li>
+            <li><a routerLink="/my-drawings">Meine Zeichnungen</a></li>
+            <li><a (click)="logout()" class="logout-link">Logout</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>

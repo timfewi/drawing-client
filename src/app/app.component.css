@@ -1,0 +1,12 @@
+.main-content {
+  min-height: calc(100vh - 64px); /* Minus der Höhe des Headers */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Stellt sicher, dass der Router-Outlet den verfügbaren Platz füllt */
+::ng-deep router-outlet + * {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}

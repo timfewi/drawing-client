@@ -1,0 +1,107 @@
+.home-container {
+  padding: var(--spacing-xl) 0;
+}
+
+.hero-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--spacing-xl) 0;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  margin-bottom: var(--spacing-lg);
+  color: var(--primary-dark);
+}
+
+.hero-subtitle {
+  font-size: 1.2rem;
+  color: var(--text-light);
+  margin-bottom: var(--spacing-xl);
+  line-height: 1.6;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+/* Neue Canvas-Sektion Styles */
+.canvas-section {
+  padding: var(--spacing-xl) 0;
+  margin-bottom: var(--spacing-xl);
+}
+
+.section-title {
+  text-align: center;
+  margin-bottom: var(--spacing-lg);
+  color: var(--primary-dark);
+}
+
+.features-section {
+  padding: var(--spacing-xl) 0;
+  background-color: rgba(74, 109, 167, 0.05); /* Leicht eingefärbter Hintergrund */
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-xl);
+  margin-top: var(--spacing-xl);
+}
+
+.feature-card {
+  background-color: white;
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--primary-color);
+}
+
+.feature-title {
+  font-size: 1.2rem;
+  margin-bottom: var(--spacing-sm);
+  color: var(--primary-dark);
+}
+
+.feature-description {
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+/* Glatter Scroll für Anker-Links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cta-buttons {
+    flex-direction: column;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
