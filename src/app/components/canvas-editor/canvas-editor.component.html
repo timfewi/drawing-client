@@ -11,6 +11,10 @@
           title="Radierer">
           <i class="fa fa-eraser"></i>
         </button>
+        <!-- Text tool button -->
+        <button class="tool-button" (click)="selectTool('text')" [class.active]="currentTool === 'text'" title="Text">
+          <i class="fa fa-font"></i>
+        </button>
         <button class="tool-button" (click)="selectTool('line')" [class.active]="currentTool === 'line'" title="Linie">
           <i class="fa fa-minus"></i>
         </button>
@@ -22,17 +26,44 @@
           title="Kreis">
           <i class="fa fa-circle-o"></i>
         </button>
+
+        <!-- Neues Auswahlwerkzeug -->
+        <button class="tool-button" (click)="selectTool('select')" [class.active]="currentTool === 'select'"
+          title="Auswählen und Verschieben">
+          <i class="fa fa-mouse-pointer"></i>
+        </button>
       </div>
 
-      <!-- Farbe und Strichbreite -->
+      <!-- Farbe und Strichbreite - Tool-spezifische Anpassungen -->
       <div class="tool-group color-width-tools">
+        <!-- Farbauswahl für alle Werkzeuge -->
         <div class="color-picker">
           <input type="color" [value]="currentColor" (input)="updateColor($event)" title="Farbe auswählen">
         </div>
-        <div class="stroke-width">
+
+        <!-- Größeneinstellung für Pinsel und Radierer -->
+        <div class="stroke-width" *ngIf="currentTool === 'brush' || currentTool === 'eraser'">
+          <span class="size-label">Größe:</span>
           <input type="range" min="1" max="50" [value]="currentWidth" (input)="updateWidth($event)"
-            title="Strichbreite">
+            title="Pinselstärke anpassen">
           <span class="width-display">{{currentWidth}}px</span>
+        </div>
+
+        <!-- Größeneinstellung für Linien, Rechtecke und Kreise -->
+        <div class="stroke-width"
+          *ngIf="currentTool === 'line' || currentTool === 'rectangle' || currentTool === 'circle'">
+          <span class="size-label">Linienstärke:</span>
+          <input type="range" min="1" max="20" [value]="currentWidth" (input)="updateWidth($event)"
+            title="Linienstärke anpassen">
+          <span class="width-display">{{currentWidth}}px</span>
+        </div>
+
+        <!-- Größeneinstellung für Text -->
+        <div class="stroke-width" *ngIf="currentTool === 'text'">
+          <span class="size-label">Textgröße:</span>
+          <input type="range" min="4" max="72" [value]="currentTextSize" (input)="updateTextSize($event)"
+            title="Textgröße anpassen">
+          <span class="width-display">{{currentTextSize}}px</span>
         </div>
       </div>
 
@@ -61,12 +92,20 @@
     </div>
   </div>
 
-  <!-- Canvas-Container mit optimierter Größe -->
+  <!-- Canvas-Container mit Auswahlmodus-Handling -->
   <div class="canvas-container">
     <canvas #canvas [width]="canvasWidth" [height]="canvasHeight" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
-      (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)">
+      (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" [ngClass]="{'select-mode': currentTool === 'select',
+                 'dragging': isDragging}">
     </canvas>
+
+    <!-- Text input overlay - nur anzeigen wenn im Text-Modus -->
+    <div *ngIf="isTextEditing" class="text-editor-overlay" [style.left.px]="textPosition.x"
+      [style.top.px]="textPosition.y">
+      <input #textInput type="text" class="text-input" [(ngModel)]="currentText" (keyup.enter)="finalizeText()"
+        (blur)="finalizeText()" [style.color]="currentColor" [style.font-size.px]="currentTextSize">
+    </div>
   </div>
 
   <!-- Statusanzeige im Fullscreen-Modus ausblenden -->

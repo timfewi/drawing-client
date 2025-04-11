@@ -2,10 +2,12 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
-import { DrawingLine, DrawingLineUtils } from '../models/DrawingLine.model';
+import { DrawingLine } from '../models/DrawingLine.model';
 import { DrawingSettings } from '../models/DrawingSettings.model';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from './auth.service';
+import { DrawingTool } from '../models/DrawingTool.model';
+import { DrawingLineUtils } from '../utils/DrawingLineUtils.model';
 
 /**
  * Drawing Service
@@ -356,6 +358,7 @@ export class DrawingService {
         title: 'Beispielzeichnung',
         lines: [
           {
+            tool: 'brush', // Fehlender tool-Wert hinzugefügt
             points: [
               { x: 100, y: 100 },
               { x: 200, y: 200 },
@@ -367,8 +370,11 @@ export class DrawingService {
         ],
         settings: {
           backgroundColor: '#FFFFFF',
-          defaultColor: '#000000',
-          defaultWidth: 3
+          tool: 'brush', // Tool-Wert hinzugefügt
+          color: '#000000',
+          lineWidth: 3,
+          opacity: 1,
+          isDrawingEnabled: true
         },
         userId: 'anonymous',
         createdAt: Date.now(),
@@ -387,13 +393,23 @@ export class DrawingService {
    */
   startDrawing(point: { x: number, y: number }): void {
     const settings = this.settingsSubject.value;
+
+    // Zeichnung nur starten, wenn NICHT das Text-Tool oder Select-Tool aktiv ist
+    if (settings.tool === 'text' || settings.tool === 'select') {
+      console.log(`${settings.tool} tool active, ignoring startDrawing`);
+      return;
+    }
+
+    console.log('Starting drawing with tool:', settings.tool);
+
     this.currentLine = {
+      id: uuidv4(),
       points: [point],
       color: settings.color,
       width: settings.lineWidth,
-      tool: settings.tool || 'brush',
+      tool: settings.tool as DrawingTool,
       opacity: settings.opacity,
-      startPoint: point  // Explizit den Startpunkt setzen
+      selected: false
     };
   }
 
@@ -402,19 +418,22 @@ export class DrawingService {
    * @param point Der nächste Punkt
    */
   continueDrawing(point: { x: number, y: number }): void {
-    if (!this.currentLine) return;
-
-    // Bei Formen wie Rechteck oder Kreis nur den letzten Punkt aktualisieren
-    if (this.currentLine.tool !== 'brush' && this.currentLine.tool !== 'eraser') {
-      // Bei Formen nur Startpunkt und aktuellen Punkt behalten
-      this.currentLine.points = [this.currentLine.points[0], point];
-    } else {
-      // Bei Freihandzeichnung alle Punkte hinzufügen
-      this.currentLine.points.push(point);
+    if (!this.currentLine) {
+      console.log('No current line to continue');
+      return;
     }
 
-    // Bei allen Tools den Endpunkt aktualisieren
-    this.currentLine.endPoint = point;
+    // Explizit Textmodus überprüfen und ignorieren
+    if (this.currentLine.tool === 'text') return;
+
+    // Für Formen wie Rechteck vs. Freihand-Werkzeuge
+    if (this.currentLine.tool === 'brush' || this.currentLine.tool === 'eraser') {
+      // Bei Freihandzeichnung alle Punkte hinzufügen
+      this.currentLine.points.push(point);
+    } else {
+      // Bei Formen nur Start- und aktuellen Punkt behalten
+      this.currentLine.points = [this.currentLine.points[0], point];
+    }
   }
 
   /**
@@ -424,8 +443,8 @@ export class DrawingService {
   endDrawing(point: { x: number, y: number }): void {
     if (!this.currentLine) return;
 
-    // Für alle Tools sicherstellen, dass der Endpunkt korrekt ist
-    this.currentLine.endPoint = point;
+    // Ignoriere Text-Tool in der endDrawing-Methode
+    if (this.currentLine.tool === 'text') return;
 
     // Bei Freihandzeichnung den letzten Punkt hinzufügen
     if (this.currentLine.tool === 'brush' || this.currentLine.tool === 'eraser') {
@@ -436,6 +455,10 @@ export class DrawingService {
       // Bei Formen nur Start- und Endpunkt speichern
       this.currentLine.points = [this.currentLine.points[0], point];
     }
+
+    // Bounds berechnen
+    const bounds = DrawingLineUtils.calculateBounds(this.currentLine);
+    this.currentLine.bounds = bounds || undefined;
 
     // Vor dem Hinzufügen der neuen Linie den aktuellen Zustand auf den Undo-Stack legen
     this.undoStack.push([...this.linesSubject.value]);
@@ -550,5 +573,63 @@ export class DrawingService {
         next: (id) => console.log(`Zeichnung gespeichert mit ID: ${id}`),
         error: (err) => console.error('Fehler beim Speichern der Zeichnung:', err)
       });
+  }
+
+  /**
+   * Aktualisiert eine bestehende Linie (z.B. nach Verschieben)
+   * @param updatedLine Die aktualisierte Linie
+   */
+  updateLine(updatedLine: DrawingLine): void {
+    // Aktuellen Zustand auf den Undo-Stack legen
+    this.undoStack.push([...this.linesSubject.value]);
+
+    // Redo-Stack leeren
+    this.redoStack = [];
+
+    // Linie in der Liste aktualisieren
+    const lines = this.linesSubject.value;
+    const index = lines.findIndex(line => line.id === updatedLine.id);
+
+    if (index !== -1) {
+      const updatedLines = [...lines];
+      updatedLines[index] = updatedLine;
+
+      // Aktualisierte Liste veröffentlichen
+      this.linesSubject.next(updatedLines);
+
+      // Aktuellen Zustand speichern
+      this.saveCurrentDrawingState(updatedLines, this.settingsSubject.value);
+    }
+  }
+
+  /**
+   * Fügt Text zur Zeichnung hinzu
+   * @param textLine Die Text-Linie
+   */
+  addTextToDrawing(textLine: DrawingLine): void {
+    // ID hinzufügen, wenn nicht vorhanden
+    if (!textLine.id) {
+      textLine.id = uuidv4();
+    }
+    // Bounds berechnen
+    const bounds = DrawingLineUtils.calculateBounds(textLine);
+    textLine.bounds = bounds || undefined;
+
+    // Vor dem Hinzufügen des Textes den aktuellen Zustand auf den Undo-Stack legen
+    // Vor dem Hinzufügen des Textes den aktuellen Zustand auf den Undo-Stack legen
+    this.undoStack.push([...this.linesSubject.value]);
+
+    // Aktuelle Linien holen und Text hinzufügen
+    const currentLines = this.linesSubject.getValue();
+    const updatedLines = [...currentLines, textLine];
+
+    // Aktualisierte Linien setzen
+    this.linesSubject.next(updatedLines);
+
+    // Aktuellen Zustand speichern
+    this.saveCurrentDrawingState(updatedLines, this.settingsSubject.value);
+
+    // Redo-Stack leeren, da eine neue Aktion ausgeführt wurde
+    this.redoStack = [];
   }
 }

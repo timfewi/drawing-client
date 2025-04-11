@@ -1,1 +1,1 @@
-export type DrawingTool = 'brush' | 'eraser' | 'line' | 'rectangle' | 'circle';
+export type DrawingTool = 'brush' | 'eraser' | 'line' | 'rectangle' | 'circle' | 'text' | 'select';

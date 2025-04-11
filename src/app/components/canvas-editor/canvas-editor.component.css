@@ -29,6 +29,60 @@
   flex-direction: column;
 }
 
+/* Text Editor Overlay */
+.text-editor-overlay {
+  position: absolute;
+  z-index: 100;
+}
+
+/* Spezielle Cursor für Auswahlmodus */
+canvas.select-mode {
+  cursor: default;
+}
+
+canvas.select-mode.object-hover {
+  cursor: move;
+}
+
+canvas.select-mode.dragging {
+  cursor: grabbing;
+}
+
+/* Tooltip für Größenänderung */
+.resize-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.text-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.3);
+  outline: none;
+  padding: 0;
+  margin: 0;
+  min-width: 150px;
+  font-family: Arial, sans-serif;
+}
+
+/* Stil für das Text-Eingabefeld */
+.text-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.3);
+  outline: none;
+  padding: 0;
+  margin: 0;
+  min-width: 150px;
+  font-family: Arial, sans-serif;
+}
+
 .toolbar-container {
   position: sticky;
   top: 0;
@@ -135,6 +189,28 @@
 }
 
 .stroke-width {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 150px;
+  background-color: rgba(255, 255, 255, 0.1);
+  padding: 5px 8px;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.3s ease;
+}
+
+/* Verbesserungen für Größeneinstellungen */
+.stroke-width:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.size-label {
+  color: white;
+  font-size: 0.85rem;
+  min-width: 70px;
+}
+
+.stroke-width {
   min-width: 150px;
 }
 
@@ -154,6 +230,7 @@ input[type="range"] {
   min-width: 40px;
   text-align: center;
   color: white;
+  font-weight: 500;
 }
 
 /* Canvas-Bereich */
@@ -241,11 +318,22 @@ canvas {
 
   .stroke-width {
     min-width: 120px;
+    padding: 4px 6px;
+  }
+
+  .size-label {
+    min-width: 60px;
+    font-size: 0.8rem;
   }
 
   .width-display {
     min-width: 30px;
-    font-size: 12px;
+    font-size: 0.8rem;
+  }
+
+  /* Kürzere Label auf mobilen Geräten */
+  .stroke-width *[data-mobile-label] {
+    display: none;
   }
 
   .fullscreen .canvas-container {
@@ -256,6 +344,11 @@ canvas {
     flex-direction: column;
     gap: 5px;
     font-size: 10px;
+  }
+
+  .text-input {
+    min-width: 100px;
+    font-size: 16px !important; /* Prevent iOS zoom on focus */
   }
 }
 
