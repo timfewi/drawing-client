@@ -1,6 +1,29 @@
 # DrawingClient
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 19.2.5.
+A collaborative drawing application that helps users create, save, and present drawings in a user-friendly interface.
+
+## About the Application
+
+DrawingClient is an Angular-based web application designed to provide users with a canvas for creating digital artwork and presentations. The application offers various drawing tools including:
+
+- Freehand brush tool
+- Shape tools (lines, rectangles, circles)
+- Text insertion
+- Selection and manipulation of objects
+- Group/ungroup functionality
+- Eraser tool
+
+Users can save their drawings, export them, and use them for presentations. The intuitive interface makes it easy for anyone to create visual content, regardless of their artistic skills.
+
+## Key Features
+
+- Responsive canvas that adapts to different screen sizes
+- Multiple drawing tools with customizable settings
+- Selection and manipulation of objects
+- Fullscreen presentation mode
+- Touch-friendly interface for mobile and tablet use
+- Undo/redo functionality
+- Group and manipulate multiple objects together
 
 ## Development server
 
