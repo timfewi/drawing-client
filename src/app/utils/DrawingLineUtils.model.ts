@@ -30,7 +30,7 @@ export class DrawingLineUtils {
     // Bei Text die Textdimensionen berücksichtigen
     if (line.tool === 'text' && line.text && line.points.length > 0) {
       // Ungefähre Textbreite basierend auf Zeichenanzahl und Größe
-      const fontSize = line.textSize || 16;
+      const fontSize = line.textSize ?? 16;
       const approximateWidth = line.text.length * fontSize * 0.6;
       maxX = Math.max(maxX, line.points[0].x + approximateWidth);
       maxY = Math.max(maxY, line.points[0].y + fontSize);

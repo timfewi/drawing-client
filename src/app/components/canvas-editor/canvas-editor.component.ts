@@ -75,6 +75,13 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   currentText = '';
   textPosition: Point = { x: 0, y: 0 };
 
+  /** Text-Eingabefeld Größenvariablen */
+  textWidth = 150;
+  textHeight = 30;
+  isResizingTextInput = false;
+  private textResizeStartPosition: Point | null = null;
+  private textInitialSize = { width: 0, height: 0 };
+
   /** Aktuell ausgewähltes Objekt */
   selectedLine: DrawingLine | null = null;
 
@@ -232,7 +239,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     if (!canvas) return;
 
     // Alle Cursor-Klassen entfernen
-    canvas.classList.remove('select-mode', 'object-hover', 'dragging');
+    canvas.classList.remove('select-mode', 'object-hover', 'dragging', 'eraser-hover');
     canvas.style.cursor = '';
 
     if (this.currentTool === 'select') {
@@ -368,6 +375,12 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    // Wenn im Radierer-Modus: Jetzt nach Objekten suchen, die gelöscht werden sollen
+    if (this.currentTool === 'eraser') {
+      this.handleEraserDown(event);
+      return;
+    }
+
     // Beende laufende Texteingabe bei Klick
     if (this.isTextEditing) {
       this.finalizeText();
@@ -438,129 +451,232 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Behandelt Radierer-Klicks zum Löschen ganzer Objekte
+   */
+  private handleEraserDown(event: MouseEvent): void {
+    const point = this.getPointFromEvent(event);
+
+    // Finde das Objekt, das unter dem Klickpunkt liegt
+    const objectToErase = this.findLineAtPoint(point);
+
+    if (objectToErase && objectToErase.id) {
+      // Das Objekt aus der Liste löschen
+      this.drawingService.deleteDrawingObject(objectToErase.id);
+
+      // Optional: Visuelles Feedback geben
+      // this.showTooltip(`Objekt gelöscht`, point, 1000);
+    }
+  }
+
+  /**
    * Mausbewegung-Handler
    */
   onMouseMove(event: MouseEvent): void {
     const currentPoint = this.getPointFromEvent(event);
 
-    // Cursor-Updates für Hover-Effekte im Auswahlmodus
-    if (this.currentTool === 'select' && !this.isDragging && !this.isResizing) {
-      const canvas = this.canvasRef.nativeElement;
-      canvas.style.cursor = '';
-
-      // Wenn ein Objekt bereits ausgewählt ist, prüfe auf Handle-Hover
-      if (this.selectedLine?.bounds) {
-        const handle = DrawingLineUtils.getResizeHandleAtPoint(currentPoint, this.selectedLine.bounds);
-        if (handle) {
-          switch (handle) {
-            case 'top-left':
-            case 'bottom-right':
-              canvas.style.cursor = 'nwse-resize';
-              break;
-            case 'top-right':
-            case 'bottom-left':
-              canvas.style.cursor = 'nesw-resize';
-              break;
-          }
-          return;
-        }
-      }
-
-      // Prüfe, ob der Cursor über einem Objekt schwebt
-      const hoverLine = this.findLineAtPoint(currentPoint);
-      if (hoverLine) {
-        canvas.style.cursor = 'move';
-      }
-    }
-
-    // Für Größenänderung im Auswahlmodus
-    if (this.currentTool === 'select' && this.isResizing && this.selectedLine &&
-      this.initialBounds && this.dragStartPoint && this.resizeHandle) {
-
-      const deltaX = currentPoint.x - this.dragStartPoint.x;
-      const deltaY = currentPoint.y - this.dragStartPoint.y;
-
-      // Neue Bounds basierend auf dem aktiven Handle berechnen
-      const newBounds = { ...this.initialBounds };
-
-      switch (this.resizeHandle) {
-        case 'top-left':
-          newBounds.x += deltaX;
-          newBounds.y += deltaY;
-          newBounds.width -= deltaX;
-          newBounds.height -= deltaY;
-          break;
-        case 'top-right':
-          newBounds.y += deltaY;
-          newBounds.width += deltaX;
-          newBounds.height -= deltaY;
-          break;
-        case 'bottom-left':
-          newBounds.x += deltaX;
-          newBounds.width -= deltaX;
-          newBounds.height += deltaY;
-          break;
-        case 'bottom-right':
-          newBounds.width += deltaX;
-          newBounds.height += deltaY;
-          break;
-      }
-
-      // Minimale Größe durchsetzen
-      if (newBounds.width < 10) newBounds.width = 10;
-      if (newBounds.height < 10) newBounds.height = 10;
-
-      // Objekt skalieren und neu zeichnen
-      const scaledLine = DrawingLineUtils.scaleLine(this.selectedLine, newBounds);
-
-      // Skalierte Linie als ausgewählt markieren und anzeigen
-      scaledLine.selected = true;
-      this.selectedLine = scaledLine;
-
-      // Neu zeichnen
-      // Bestehende Liste behalten, aber das ausgewählte Objekt ersetzen
-      const updatedLines = this.currentDrawingLines.map(line =>
-        line.id === scaledLine.id ? scaledLine : line
-      );
-
-      this.redrawCanvas(updatedLines);
+    // Handle based on current tool and state
+    if (this.currentTool === 'eraser') {
+      this.handleEraserMove(currentPoint);
       return;
     }
 
-    // Für Drag & Drop im Auswahlmodus
-    if (this.currentTool === 'select' && this.isDragging && this.selectedLine &&
-      this.dragStartPoint && this.dragStartLinePosition) {
+    if (this.currentTool === 'select') {
+      if (this.isResizing && this.canResize()) {
+        this.handleResizeMove(currentPoint);
+        return;
+      }
 
-      const offsetX = currentPoint.x - this.dragStartPoint.x;
-      const offsetY = currentPoint.y - this.dragStartPoint.y;
+      if (this.isDragging && this.canDrag()) {
+        this.handleDragMove(currentPoint);
+        return;
+      }
+    }
 
-      // Neues Punktarray mit den verschobenen Punkten erstellen
-      const movedPoints = this.dragStartLinePosition.map(point => ({
-        x: point.x + offsetX,
-        y: point.y + offsetY
-      }));
+    this.handleRegularDrawing(currentPoint);
+  }
 
-      // Punkte aktualisieren
-      this.selectedLine.points = movedPoints;
+  /**
+   * Handles mouse movement in eraser mode
+   */
+  private handleEraserMove(currentPoint: Point): void {
+    const canvas = this.canvasRef.nativeElement;
+    const hoverObject = this.findLineAtPoint(currentPoint);
 
-      // Bounds aktualisieren
-      const bounds = DrawingLineUtils.calculateBounds(this.selectedLine);
-      this.selectedLine.bounds = bounds || undefined;
-
-      // Canvas neu zeichnen
+    if (hoverObject) {
+      // Statt direktem no-drop-Cursor CSS-Klassen verwenden
+      canvas.classList.add('eraser-hover');
+      this.previewObjectToErase(hoverObject);
+    } else {
+      // CSS-Klasse entfernen, wenn kein Objekt gefunden wurde
+      canvas.classList.remove('eraser-hover');
       this.redrawCanvas(this.currentDrawingLines);
-      return;
+    }
+  }
+
+  /**
+   * Checks if all conditions for resizing are met
+   */
+  private canResize(): boolean {
+    return Boolean(this.selectedLine && this.initialBounds && this.dragStartPoint && this.resizeHandle);
+  }
+
+  /**
+   * Handles resizing of selected objects
+   */
+  private handleResizeMove(currentPoint: Point): void {
+    const deltaX = currentPoint.x - this.dragStartPoint!.x;
+    const deltaY = currentPoint.y - this.dragStartPoint!.y;
+
+    // Neue Bounds basierend auf dem aktiven Handle berechnen
+    const newBounds = this.calculateResizedBounds(deltaX, deltaY);
+
+    // Objekt skalieren und neu zeichnen
+    const scaledLine = DrawingLineUtils.scaleLine(this.selectedLine!, newBounds);
+    scaledLine.selected = true;
+    this.selectedLine = scaledLine;
+
+    // Neu zeichnen
+    const updatedLines = this.currentDrawingLines.map(line =>
+      line.id === scaledLine.id ? scaledLine : line
+    );
+
+    this.redrawCanvas(updatedLines);
+  }
+
+  /**
+   * Calculates new bounds based on resize deltas
+   */
+  private calculateResizedBounds(deltaX: number, deltaY: number): Bounds {
+    const newBounds = { ...this.initialBounds! };
+
+    switch (this.resizeHandle) {
+      case 'top-left':
+        newBounds.x += deltaX;
+        newBounds.y += deltaY;
+        newBounds.width -= deltaX;
+        newBounds.height -= deltaY;
+        break;
+      case 'top-right':
+        newBounds.y += deltaY;
+        newBounds.width += deltaX;
+        newBounds.height -= deltaY;
+        break;
+      case 'bottom-left':
+        newBounds.x += deltaX;
+        newBounds.width -= deltaX;
+        newBounds.height += deltaY;
+        break;
+      case 'bottom-right':
+        newBounds.width += deltaX;
+        newBounds.height += deltaY;
+        break;
     }
 
-    // Bestehende Zeichenlogik beibehalten
+    // Minimale Größe durchsetzen
+    newBounds.width = Math.max(newBounds.width, 10);
+    newBounds.height = Math.max(newBounds.height, 10);
+
+    return newBounds;
+  }
+
+  /**
+   * Checks if all conditions for dragging are met
+   */
+  private canDrag(): boolean {
+    return Boolean(this.selectedLine && this.dragStartPoint && this.dragStartLinePosition);
+  }
+
+  /**
+   * Handles dragging of selected objects
+   */
+  private handleDragMove(currentPoint: Point): void {
+    const offsetX = currentPoint.x - this.dragStartPoint!.x;
+    const offsetY = currentPoint.y - this.dragStartPoint!.y;
+
+    // Neues Punktarray mit den verschobenen Punkten erstellen
+    const movedPoints = this.dragStartLinePosition!.map(point => ({
+      x: point.x + offsetX,
+      y: point.y + offsetY
+    }));
+
+    // Punkte aktualisieren
+    this.selectedLine!.points = movedPoints;
+    this.selectedLine!.bounds = DrawingLineUtils.calculateBounds(this.selectedLine!) || undefined;
+
+    // Canvas neu zeichnen
+    this.redrawCanvas(this.currentDrawingLines);
+  }
+
+  /**
+   * Handles regular drawing operations
+   */
+  private handleRegularDrawing(currentPoint: Point): void {
     if (!this.isDrawing) return;
 
     this.drawingService.continueDrawing(currentPoint);
 
-    if (this.currentTool === 'brush' || this.currentTool === 'eraser') {
+    if (this.currentTool === 'brush') {
       this.drawLine(this.drawingService.getCurrentLine());
     } else if (this.currentTool !== 'text') {
       this.previewShape();
+    }
+  }
+
+  /**
+   * Zeigt eine Vorschau des zu löschenden Objekts an
+   */
+  private previewObjectToErase(line: DrawingLine): void {
+    // Aktuelle Zeichnung speichern, um sie später wiederherzustellen
+    const originalLines = this.currentDrawingLines;
+
+    // Objekt mit einem roten Umriss markieren
+    if (line.bounds) {
+      this.redrawCanvas(originalLines);
+
+      // Roten Rahmen zeichnen
+      this.ctx.save();
+      this.ctx.strokeStyle = 'red';
+      this.ctx.lineWidth = 2;
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.strokeRect(
+        line.bounds.x,
+        line.bounds.y,
+        line.bounds.width,
+        line.bounds.height
+      );
+      this.ctx.restore();
+    }
+  }
+
+  /**
+   * Zeigt einen kurzen Tooltip an der angegebenen Position
+   */
+  private showTooltip(message: string, position: Point, duration: number = 1500): void {
+    // Tooltip-Element erstellen
+    const tooltip = document.createElement('div');
+    tooltip.className = 'eraser-tooltip';
+    tooltip.textContent = message;
+    tooltip.style.position = 'absolute';
+    tooltip.style.left = `${position.x + 10}px`;
+    tooltip.style.top = `${position.y + 10}px`;
+    tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    tooltip.style.color = 'white';
+    tooltip.style.padding = '5px 10px';
+    tooltip.style.borderRadius = '4px';
+    tooltip.style.zIndex = '1000';
+    tooltip.style.pointerEvents = 'none';
+
+    // Tooltip zum Canvas-Container hinzufügen
+    const container = this.canvasRef.nativeElement.parentElement;
+    if (container) {
+      container.appendChild(tooltip);
+
+      // Tooltip nach der angegebenen Zeit entfernen
+      setTimeout(() => {
+        if (tooltip.parentNode) {
+          tooltip.parentNode.removeChild(tooltip);
+        }
+      }, duration);
     }
   }
 
@@ -663,8 +779,8 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    * Startet den Zeichenvorgang an einem bestimmten Punkt
    */
   private startDrawingAtPoint(event: MouseEvent): void {
-    // Prüfen ob wir nicht im Text- oder Auswahlmodus sind
-    if (this.currentTool === 'text' || this.currentTool === 'select') return;
+    // Prüfen ob wir nicht im Text- oder Auswahlmodus oder Radierer-Modus sind
+    if (this.currentTool === 'text' || this.currentTool === 'select' || this.currentTool === 'eraser') return;
 
     this.isDrawing = true;
     const point = this.getPointFromEvent(event);
@@ -790,6 +906,97 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Startet die Größenänderung des Texteingabefelds
+   * @param event Das Maus-Event
+   */
+  startResizingTextInput(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    this.isResizingTextInput = true;
+    this.textResizeStartPosition = this.getPointFromEvent(event);
+
+    // Speichere die aktuelle Größe des Texteingabefelds
+    this.textInitialSize = {
+      width: this.textWidth,
+      height: this.textHeight
+    };
+
+    // Event-Handler für Mausbewegung und Mausfreigabe hinzufügen
+    document.addEventListener('mousemove', this.handleTextResize);
+    document.addEventListener('mouseup', this.finishTextResize);
+
+    // Cursor für die Größenänderung setzen
+    document.body.style.cursor = 'nwse-resize';
+  }
+
+  /**
+   * Handler für die Größenänderung des Texteingabefelds während der Mausbewegung
+   */
+  private handleTextResize = (event: MouseEvent): void => {
+    if (!this.isResizingTextInput || !this.textResizeStartPosition) return;
+
+    // Berechne den Unterschied zur Startposition
+    const currentPoint = this.getPointFromMouseEvent(event);
+    const deltaX = currentPoint.x - this.textResizeStartPosition.x;
+    const deltaY = currentPoint.y - this.textResizeStartPosition.y;
+
+    // Neue Größe berechnen
+    this.textWidth = Math.max(this.textInitialSize.width + deltaX, 50); // Mindestbreite: 50px
+    this.textHeight = Math.max(this.textInitialSize.height + deltaY, 20); // Mindesthöhe: 20px
+
+    // Textgröße basierend auf der neuen Eingabefeld-Größe anpassen
+    // Wir verwenden einen Skalierungsfaktor, damit die Textgröße proportional zur Größe des Feldes ist
+    const scaleFactor = 0.5; // Dieser Faktor kann angepasst werden
+    const newTextSize = Math.max(Math.min(this.textHeight * scaleFactor, 96), 4); // Zwischen 4px und 96px begrenzen
+
+    // Aktualisiere die Textgröße
+    this.currentTextSize = Math.round(newTextSize);
+
+    // Aktualisiere den Textgrößen-Stil direkt am Input-Element
+    if (this.textInputRef?.nativeElement) {
+      this.textInputRef.nativeElement.style.fontSize = `${this.currentTextSize}px`;
+    }
+
+    // Update auch in den Einstellungen
+    this.drawingService.updateSettings({ textSize: this.currentTextSize });
+  }
+
+  /**
+   * Beendet die Größenänderung des Texteingabefelds
+   */
+  private finishTextResize = (): void => {
+    this.isResizingTextInput = false;
+    this.textResizeStartPosition = null;
+
+    // Event-Handler entfernen
+    document.removeEventListener('mousemove', this.handleTextResize);
+    document.removeEventListener('mouseup', this.finishTextResize);
+
+    // Cursor zurücksetzen
+    document.body.style.cursor = '';
+
+    // Fokus auf das Texteingabefeld setzen
+    setTimeout(() => {
+      if (this.textInputRef?.nativeElement) {
+        this.textInputRef.nativeElement.focus();
+      }
+    }, 10);
+  }
+
+  /**
+   * Hilfsmethode, um einen Punkt aus einem globalen Maus-Event zu extrahieren
+   */
+  private getPointFromMouseEvent(event: MouseEvent): Point {
+    const canvas = this.canvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+  }
+
+  /**
    * Extrahiert einen Punkt aus einem Maus-Event
    * @param event Das Maus-Event
    * @returns Der extrahierte Punkt
@@ -846,7 +1053,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     // Text-Objekte zeichnen
     if (line.tool === 'text' && line.text && line.points.length > 0) {
       const position = line.points[0];
-      const fontSize = line.textSize || line.width * 3;
+      const fontSize = line.textSize ?? line.width * 3;
       this.ctx.font = `${fontSize}px Arial`;
       this.ctx.fillStyle = line.color;
       this.ctx.textBaseline = 'top';
@@ -860,12 +1067,12 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     }
 
     // Anderes Zeichnen wie bisher
-    this.ctx.strokeStyle = line.tool === 'eraser' ? '#FFFFFF' : line.color;
+    this.ctx.strokeStyle = line.color;
     this.ctx.lineWidth = line.width;
     this.ctx.lineCap = 'round';
     this.ctx.lineJoin = 'round';
 
-    if (line.tool === 'brush' || line.tool === 'eraser') {
+    if (line.tool === 'brush') {
       if (line.points.length < 2) return;
 
       this.ctx.beginPath();

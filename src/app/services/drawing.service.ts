@@ -73,11 +73,11 @@ export class DrawingService {
     id?: string
   ): Observable<string> {
     const drawingData = {
-      id: id || uuidv4(),
+      id: id ?? uuidv4(),
       title,
       lines,
       settings,
-      userId: this.authService.currentUser?.id || 'anonymous',
+      userId: this.authService.currentUser?.id ?? 'anonymous',
       createdAt: id ? undefined : Date.now(),
       updatedAt: Date.now()
     };
@@ -170,6 +170,28 @@ export class DrawingService {
           return throwError(() => new Error('Zeichnung konnte nicht gelöscht werden.'));
         })
       );
+  }
+
+  /**
+   * Löscht ein Zeichnungsobjekt anhand seiner ID
+   * @param id Die ID des zu löschenden Objekts
+   */
+  deleteDrawingObject(id: string): void {
+    // Vor dem Löschen den aktuellen Zustand auf den Undo-Stack legen
+    this.undoStack.push([...this.linesSubject.value]);
+
+    // Redo-Stack leeren
+    this.redoStack = [];
+
+    // Das Objekt aus der Liste filtern
+    const currentLines = this.linesSubject.value;
+    const updatedLines = currentLines.filter(line => line.id !== id);
+
+    // Aktualisierte Liste setzen
+    this.linesSubject.next(updatedLines);
+
+    // Aktuellen Zustand speichern
+    this.saveCurrentDrawingState(updatedLines, this.settingsSubject.value);
   }
 
   /**
@@ -394,8 +416,8 @@ export class DrawingService {
   startDrawing(point: { x: number, y: number }): void {
     const settings = this.settingsSubject.value;
 
-    // Zeichnung nur starten, wenn NICHT das Text-Tool oder Select-Tool aktiv ist
-    if (settings.tool === 'text' || settings.tool === 'select') {
+    // Zeichnung nur starten, wenn NICHT das Text-Tool, Select-Tool oder Eraser-Tool aktiv ist
+    if (settings.tool === 'text' || settings.tool === 'select' || settings.tool === 'eraser') {
       console.log(`${settings.tool} tool active, ignoring startDrawing`);
       return;
     }
@@ -423,11 +445,11 @@ export class DrawingService {
       return;
     }
 
-    // Explizit Textmodus überprüfen und ignorieren
-    if (this.currentLine.tool === 'text') return;
+    // Explizit Textmodus und Radierer überprüfen und ignorieren
+    if (this.currentLine.tool === 'text' || this.currentLine.tool === 'eraser') return;
 
     // Für Formen wie Rechteck vs. Freihand-Werkzeuge
-    if (this.currentLine.tool === 'brush' || this.currentLine.tool === 'eraser') {
+    if (this.currentLine.tool === 'brush') { // Entferne den Radierer hier
       // Bei Freihandzeichnung alle Punkte hinzufügen
       this.currentLine.points.push(point);
     } else {
@@ -443,11 +465,11 @@ export class DrawingService {
   endDrawing(point: { x: number, y: number }): void {
     if (!this.currentLine) return;
 
-    // Ignoriere Text-Tool in der endDrawing-Methode
-    if (this.currentLine.tool === 'text') return;
+    // Ignoriere Text-Tool und Radierer-Tool in der endDrawing-Methode
+    if (this.currentLine.tool === 'text' || this.currentLine.tool === 'eraser') return;
 
     // Bei Freihandzeichnung den letzten Punkt hinzufügen
-    if (this.currentLine.tool === 'brush' || this.currentLine.tool === 'eraser') {
+    if (this.currentLine.tool === 'brush') { // Entferne den Radierer hier
       if (this.currentLine.points[this.currentLine.points.length - 1] !== point) {
         this.currentLine.points.push(point);
       }
@@ -615,7 +637,6 @@ export class DrawingService {
     const bounds = DrawingLineUtils.calculateBounds(textLine);
     textLine.bounds = bounds || undefined;
 
-    // Vor dem Hinzufügen des Textes den aktuellen Zustand auf den Undo-Stack legen
     // Vor dem Hinzufügen des Textes den aktuellen Zustand auf den Undo-Stack legen
     this.undoStack.push([...this.linesSubject.value]);
 

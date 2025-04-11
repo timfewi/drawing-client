@@ -36,13 +36,13 @@
 
       <!-- Farbe und Strichbreite - Tool-spezifische Anpassungen -->
       <div class="tool-group color-width-tools">
-        <!-- Farbauswahl für alle Werkzeuge -->
-        <div class="color-picker">
+        <!-- Farbauswahl für alle Werkzeuge außer 'select' und 'eraser' -->
+        <div class="color-picker" *ngIf="currentTool !== 'select' && currentTool !== 'eraser'">
           <input type="color" [value]="currentColor" (input)="updateColor($event)" title="Farbe auswählen">
         </div>
 
-        <!-- Größeneinstellung für Pinsel und Radierer -->
-        <div class="stroke-width" *ngIf="currentTool === 'brush' || currentTool === 'eraser'">
+        <!-- Größeneinstellung für Pinsel -->
+        <div class="stroke-width" *ngIf="currentTool === 'brush'">
           <span class="size-label">Größe:</span>
           <input type="range" min="1" max="50" [value]="currentWidth" (input)="updateWidth($event)"
             title="Pinselstärke anpassen">
@@ -96,15 +96,22 @@
   <div class="canvas-container">
     <canvas #canvas [width]="canvasWidth" [height]="canvasHeight" (mousedown)="onMouseDown($event)"
       (mousemove)="onMouseMove($event)" (mouseup)="onMouseUp($event)" (mouseleave)="onMouseLeave()"
-      (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" [ngClass]="{'select-mode': currentTool === 'select',
-                 'dragging': isDragging}">
+      (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd($event)" [ngClass]="{
+        'select-mode': currentTool === 'select',
+        'eraser-mode': currentTool === 'eraser',
+        'dragging': isDragging
+      }">
     </canvas>
 
     <!-- Text input overlay - nur anzeigen wenn im Text-Modus -->
     <div *ngIf="isTextEditing" class="text-editor-overlay" [style.left.px]="textPosition.x"
       [style.top.px]="textPosition.y">
-      <input #textInput type="text" class="text-input" [(ngModel)]="currentText" (keyup.enter)="finalizeText()"
-        (blur)="finalizeText()" [style.color]="currentColor" [style.font-size.px]="currentTextSize">
+      <div class="text-input-container">
+        <input #textInput type="text" class="text-input" [(ngModel)]="currentText" (keyup.enter)="finalizeText()"
+          [style.color]="currentColor" [style.font-size.px]="currentTextSize" [style.width.px]="textWidth"
+          [style.height.px]="textHeight">
+        <div class="text-input-resize-handle" (mousedown)="startResizingTextInput($event)"></div>
+      </div>
     </div>
   </div>
 
