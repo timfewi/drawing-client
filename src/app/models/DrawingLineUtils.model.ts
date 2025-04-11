@@ -1,6 +1,6 @@
-import { DrawingLine } from '../models/DrawingLine.model';
-import { Point } from '../models/Point.model';
-import { Bounds } from '../models/Bounds.model';
+import { DrawingLine } from './DrawingLine.model';
+import { Point } from './Point.model';
+import { Bounds } from './Bounds.model';
 
 export class DrawingLineUtils {
   /**

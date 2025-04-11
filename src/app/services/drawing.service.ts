@@ -7,7 +7,7 @@ import { DrawingSettings } from '../models/DrawingSettings.model';
 import { v4 as uuidv4 } from 'uuid';
 import { AuthService } from './auth.service';
 import { DrawingTool } from '../models/DrawingTool.model';
-import { DrawingLineUtils } from '../utils/DrawingLineUtils.model';
+import { DrawingLineUtils } from '../models/DrawingLineUtils.model';
 
 /**
  * Drawing Service

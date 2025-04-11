@@ -9,7 +9,7 @@ import { DrawingSettings } from '../../models/DrawingSettings.model';
 import { DrawingTool } from '../../models/DrawingTool.model';
 import { Subscription } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
-import { DrawingLineUtils } from '../../utils/DrawingLineUtils.model';
+import { DrawingLineUtils } from '../../models/DrawingLineUtils.model';
 import { Bounds } from '../../models/Bounds.model';
 import { ConfirmModalComponent } from "../confirm-modal/confirm-modal.component";
 
