@@ -34,6 +34,18 @@
         </button>
       </div>
 
+      <!-- Gruppierungsaktionen (nur anzeigen, wenn im Auswahlmodus) - verschoben zwischen Tools und Aktionen -->
+      <div class="tool-group grouping-tools" *ngIf="currentTool === 'select'">
+        <button class="action-button" (click)="groupSelectedObjects()" [disabled]="selectedLines.length < 2"
+          title="Objekte gruppieren (Strg+G)">
+          <i class="fa fa-object-group"></i>
+        </button>
+        <button class="action-button" (click)="ungroupObjects()" [disabled]="!isGrouped"
+          title="Gruppierung aufheben (Strg+Shift+G)">
+          <i class="fa fa-object-ungroup"></i>
+        </button>
+      </div>
+
       <!-- Farbe und Strichbreite - Tool-spezifische Anpassungen -->
       <div class="tool-group color-width-tools">
         <!-- Farbauswahl für alle Werkzeuge außer 'select' und 'eraser' -->

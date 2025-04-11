@@ -625,6 +625,37 @@ export class DrawingService {
   }
 
   /**
+   * Aktualisiert mehrere Linien gleichzeitig (z.B. nach Verschieben einer Gruppe)
+   * @param updatedLines Die aktualisierten Linien
+   */
+  updateMultipleLines(updatedLines: DrawingLine[]): void {
+    if (updatedLines.length === 0) return;
+
+    // Aktuellen Zustand auf den Undo-Stack legen
+    this.undoStack.push([...this.linesSubject.value]);
+
+    // Redo-Stack leeren
+    this.redoStack = [];
+
+    // Alle Linien mit ihrer aktualisierten Version ersetzen
+    const currentLines = [...this.linesSubject.value];
+
+    // Für jede aktualisierte Linie
+    updatedLines.forEach(updatedLine => {
+      const index = currentLines.findIndex(line => line.id === updatedLine.id);
+      if (index !== -1) {
+        currentLines[index] = updatedLine;
+      }
+    });
+
+    // Aktualisierte Liste veröffentlichen
+    this.linesSubject.next(currentLines);
+
+    // Aktuellen Zustand speichern
+    this.saveCurrentDrawingState(currentLines, this.settingsSubject.value);
+  }
+
+  /**
    * Fügt Text zur Zeichnung hinzu
    * @param textLine Die Text-Linie
    */

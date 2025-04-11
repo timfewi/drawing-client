@@ -2,6 +2,7 @@ import { Component, ElementRef, AfterViewInit, ViewChild, OnDestroy, HostListene
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DrawingService } from '../../services/drawing.service';
+import { HeaderService } from '../../services/header.service';
 import { Point } from '../../models/Point.model';
 import { DrawingLine } from '../../models/DrawingLine.model';
 import { DrawingSettings } from '../../models/DrawingSettings.model';
@@ -85,10 +86,22 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   /** Aktuell ausgewähltes Objekt */
   selectedLine: DrawingLine | null = null;
 
+  /** Mehrfachauswahl Funktionalität */
+  selectedLines: DrawingLine[] = [];
+  isMultiSelecting = false;
+  selectionStartPoint: Point | null = null;
+  selectionRect: { x: number, y: number, width: number, height: number } | null = null;
+  private isMultiSelectKeyPressed = false;
+
+  /** Gruppierung */
+  isGrouped = false;
+  groupedLines: string[] = []; // IDs der gruppierten Linien
+
   /** Drag & Drop Zustände */
   isDragging = false; // Changed from private to public to be accessible in the template
   private dragStartPoint: Point | null = null;
   private dragStartLinePosition: Point[] | null = null;
+  private dragStartLinesPositions: Map<string, Point[]> = new Map();
 
   /** Skalierungszustand */
   private isResizing = false;
@@ -97,7 +110,10 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
 
   private resizeTimeout: any;
 
-  constructor(private readonly drawingService: DrawingService) {
+  constructor(
+    private readonly drawingService: DrawingService,
+    private readonly headerService: HeaderService
+  ) {
     // Initialisierung der Subscriptions direkt im Konstruktor
     this.settingsSubscription = this.drawingService.settings$.subscribe(
       (settings: DrawingSettings) => {
@@ -157,6 +173,19 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Beim Scrollen des Fensters den Header kontrollieren
+   */
+  @HostListener('window:scroll')
+  onScroll(): void {
+    // Beim Scrollen nach unten den Header ausblenden
+    if (window.scrollY > 100) {
+      this.headerService.hideHeader();
+    } else {
+      this.headerService.showHeader();
+    }
+  }
+
+  /**
    * Beim Drücken der Escape-Taste Fullscreen beenden
    */
   @HostListener('document:keydown.escape')
@@ -167,6 +196,159 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Beim Drücken von Strg+G Objekte gruppieren
+   */
+  @HostListener('document:keydown.control.g', ['$event'])
+  onGroupKey(event: KeyboardEvent): void {
+    // Verhindern, dass der Browser seine Standard-Aktion ausführt
+    event.preventDefault();
+
+    // Nur im Auswahlmodus erlauben
+    if (this.currentTool === 'select' && this.selectedLines.length >= 2) {
+      this.groupSelectedObjects();
+    }
+  }
+
+  /**
+   * Beim Drücken von Strg+Shift+G Gruppierung aufheben
+   */
+  @HostListener('document:keydown.control.shift.g', ['$event'])
+  onUngroupKey(event: KeyboardEvent): void {
+    // Verhindern, dass der Browser seine Standard-Aktion ausführt
+    event.preventDefault();
+
+    // Nur im Auswahlmodus und wenn eine Gruppierung vorhanden ist
+    if (this.currentTool === 'select' && this.isGrouped) {
+      this.ungroupObjects();
+    }
+  }
+
+  /**
+   * Beim Drücken der Shift-Taste Mehrfachauswahl aktivieren
+   */
+  @HostListener('document:keydown.shift', ['$event'])
+  onShiftKeyDown(event: KeyboardEvent): void {
+    this.isMultiSelectKeyPressed = true;
+  }
+
+  /**
+   * Beim Loslassen der Shift-Taste Mehrfachauswahl deaktivieren
+   */
+  @HostListener('document:keyup.shift', ['$event'])
+  onShiftKeyUp(event: KeyboardEvent): void {
+    this.isMultiSelectKeyPressed = false;
+  }
+
+  /**
+   * Fullscreen-Modus umschalten
+   */
+  toggleFullscreen(): void {
+    // Aktuelle Zeichnungsdaten für die Wiederherstellung sichern
+    const savedDrawingData = JSON.parse(JSON.stringify(this.currentDrawingLines));
+
+    // Vorherigen Zustand speichern
+    const wasFullscreen = this.isFullscreen;
+
+    // Fullscreen-Status umschalten
+    this.isFullscreen = !this.isFullscreen;
+
+    // Header im Vollbildmodus ausblenden, sonst einblenden
+    if (this.isFullscreen) {
+      this.headerService.hideHeader();
+    } else {
+      this.headerService.showHeader();
+    }
+
+    document.body.classList.toggle('canvas-fullscreen-active', this.isFullscreen);
+
+    // DOM-Update und Neuzeichnen mit erhöhter Stabilität
+    setTimeout(() => {
+      // Force reflow/repaint
+      document.body.offsetHeight;
+
+      // Canvas-Element referenzieren
+      const canvas = this.canvasRef.nativeElement;
+
+      // Container-Größe ermitteln
+      const container = canvas.parentElement;
+      if (!container) return;
+
+      // Canvas-Dimensionen berechnen
+      this.calculateCanvasDimensions(container);
+
+      // Canvas-Dimensionen explizit setzen
+      canvas.width = this.canvasWidth;
+      canvas.height = this.canvasHeight;
+
+      // Context neu initialisieren
+      this.ctx = canvas.getContext('2d')!;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
+
+      // Immer ersten Redraw ausführen
+      this.forceRedraw(savedDrawingData);
+
+      // Bei BEIDEN Richtungen einen zweiten Redraw mit unterschiedlicher Verzögerung durchführen
+      setTimeout(() => {
+        this.forceRedraw(savedDrawingData);
+
+        // Bei größeren Änderungen einen dritten Redraw durchführen
+        setTimeout(() => {
+          this.forceRedraw(savedDrawingData);
+        }, wasFullscreen ? 50 : 200); // Längere Verzögerung beim Wechsel in den Vollbildmodus
+      }, wasFullscreen ? 100 : 50); // Unterschiedliche Verzögerungen je nach Richtung
+    }, 50);
+  }
+
+  /**
+   * Erzwingt ein vollständiges Neuzeichnen mit den gegebenen Daten
+   */
+  private forceRedraw(drawingData: DrawingLine[]): void {
+    if (!this.ctx || !this.canvasRef?.nativeElement) return;
+
+    // Canvas explizit löschen
+    this.clearCanvas();
+
+    // Alle Linien durchgehen und neu zeichnen
+    if (drawingData && drawingData.length > 0) {
+      for (const line of drawingData) {
+        this.drawLine(line);
+      }
+    }
+  }
+
+  /**
+   * Berechnet die Dimensionen des Canvas basierend auf dem Container
+   */
+  private calculateCanvasDimensions(container: HTMLElement): void {
+    const containerStyle = window.getComputedStyle(container);
+    const paddingX = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
+    const paddingY = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
+    const borderX = parseFloat(containerStyle.borderLeftWidth) + parseFloat(containerStyle.borderRightWidth);
+    const borderY = parseFloat(containerStyle.borderTopWidth) + parseFloat(containerStyle.borderBottomWidth);
+
+    const availableWidth = container.clientWidth - paddingX - borderX;
+
+    let availableHeight: number;
+
+    if (this.isFullscreen) {
+      const toolbarHeight = document.querySelector('.toolbar-container')?.clientHeight || 80;
+      availableHeight = window.innerHeight - toolbarHeight - 10;
+    } else {
+      const parentHeight = container.clientHeight - paddingY - borderY;
+      availableHeight = Math.min(window.innerHeight * 0.6, parentHeight);
+
+      const aspectRatio = 4 / 3;
+      const heightByAspectRatio = availableWidth / aspectRatio;
+
+      availableHeight = Math.min(availableHeight, heightByAspectRatio);
+    }
+
+    this.canvasWidth = Math.floor(availableWidth);
+    this.canvasHeight = Math.floor(availableHeight);
+  }
+
+  /**
    * Canvas-Größe an das Eltern-Element anpassen
    */
   private resizeCanvas(): void {
@@ -174,34 +356,26 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
       const container = this.canvasRef?.nativeElement.parentElement;
       if (!container) return;
 
-      const containerStyle = window.getComputedStyle(container);
-      const paddingX = parseFloat(containerStyle.paddingLeft) + parseFloat(containerStyle.paddingRight);
-      const paddingY = parseFloat(containerStyle.paddingTop) + parseFloat(containerStyle.paddingBottom);
-      const borderX = parseFloat(containerStyle.borderLeftWidth) + parseFloat(containerStyle.borderRightWidth);
-      const borderY = parseFloat(containerStyle.borderTopWidth) + parseFloat(containerStyle.borderBottomWidth);
+      // Aktuelle Zeichnung sichern
+      const currentDrawingData = [...this.currentDrawingLines];
 
-      const availableWidth = container.clientWidth - paddingX - borderX;
+      // Canvas-Dimensionen berechnen
+      this.calculateCanvasDimensions(container);
 
-      let availableHeight: number;
+      // Canvas-Element direkt referenzieren und Größe setzen
+      const canvas = this.canvasRef.nativeElement;
+      canvas.width = this.canvasWidth;
+      canvas.height = this.canvasHeight;
 
-      if (this.isFullscreen) {
-        const toolbarHeight = document.querySelector('.toolbar-container')?.clientHeight || 80;
-        availableHeight = window.innerHeight - toolbarHeight - 10;
-      } else {
-        const parentHeight = container.clientHeight - paddingY - borderY;
-        availableHeight = Math.min(window.innerHeight * 0.6, parentHeight);
+      // Context neu initialisieren und Basiseinstellungen setzen
+      this.ctx = canvas.getContext('2d')!;
+      this.ctx.lineCap = 'round';
+      this.ctx.lineJoin = 'round';
 
-        const aspectRatio = 4 / 3;
-        const heightByAspectRatio = availableWidth / aspectRatio;
-
-        availableHeight = Math.min(availableHeight, heightByAspectRatio);
+      // Zeichnung aus dem gespeicherten Zustand wiederherstellen
+      if (currentDrawingData.length > 0) {
+        this.redrawCanvas(currentDrawingData);
       }
-
-      this.canvasWidth = Math.floor(availableWidth);
-      this.canvasHeight = Math.floor(availableHeight);
-
-      this.redrawCanvas();
-
     }, 0);
   }
 
@@ -229,6 +403,12 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
       lineWidth: this.currentWidth,
       textSize: this.currentTextSize
     });
+
+    // Gruppierungsmodus deaktivieren, wenn ein anderes Werkzeug ausgewählt wird
+    if (tool !== 'select') {
+      this.isGrouped = false;
+      this.groupedLines = [];
+    }
   }
 
   /**
@@ -349,20 +529,6 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Fullscreen-Modus umschalten
-   */
-  toggleFullscreen(): void {
-    this.isFullscreen = !this.isFullscreen;
-
-    document.body.classList.toggle('canvas-fullscreen-active', this.isFullscreen);
-
-    setTimeout(() => {
-      this.resizeCanvas();
-      window.dispatchEvent(new Event('resize'));
-    }, 50);
-  }
-
-  /**
    * Mausklick-Handler für den Zeichenbeginn
    * @param event Das Maus-Event
    */
@@ -407,6 +573,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    */
   private handleSelectionMouseDown(event: MouseEvent): void {
     const point = this.getPointFromEvent(event);
+    const isShiftPressed = event.shiftKey;
 
     // Zuerst prüfen, ob ein bereits ausgewähltes Objekt an einem Resizing-Handle angeklickt wurde
     if (this.selectedLine?.bounds) {
@@ -425,29 +592,163 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
       }
     }
 
-    // Falls kein Handle getroffen wurde, normal fortfahren...
-
-    // Alte Auswahl aufheben
-    if (this.selectedLine) {
-      this.selectedLine.selected = false;
+    // Prüfen, ob wir eine neue Auswahlbox starten
+    // Nur starten, wenn wir nicht auf ein Objekt geklickt haben und Shift nicht gedrückt ist
+    const clickedLine = this.findLineAtPoint(point);
+    if (!clickedLine && !isShiftPressed) {
+      this.startSelectionBox(point);
+      return;
     }
 
-    // Prüfen, ob ein Objekt getroffen wurde
-    this.selectedLine = this.findLineAtPoint(point);
+    // Wenn wir eine Gruppe haben und auf ein Mitglied der Gruppe klicken,
+    // alle Elemente der Gruppe zum Verschieben auswählen
+    if (this.isGrouped && clickedLine && this.groupedLines.includes(clickedLine.id!)) {
+      this.startDraggingGroup(point, clickedLine);
+      return;
+    }
 
-    // Wenn ein Objekt gefunden wurde
-    if (this.selectedLine) {
-      this.selectedLine.selected = true;
-      this.isDragging = true;
-      this.dragStartPoint = point;
-      this.dragStartLinePosition = [...this.selectedLine.points];
+    // Wenn wir auf ein existierendes Objekt geklickt haben
+    if (clickedLine) {
+      // Bei Shift-Klick das Objekt zur Auswahl hinzufügen oder aus der Auswahl entfernen
+      if (isShiftPressed) {
+        this.toggleSelection(clickedLine);
+      }
+      // Prüfen, ob das angeklickte Objekt bereits ausgewählt ist
+      else if (clickedLine.selected && this.selectedLines.length > 1) {
+        // Objekt ist bereits ausgewählt und Teil einer Mehrfachauswahl
+        // Wir behalten die Auswahl und starten das Verschieben aller ausgewählten Objekte
+        this.startDraggingMultipleObjects(point, clickedLine);
+      }
+      else {
+        // Objekt ist nicht ausgewählt, also alte Auswahl löschen und nur neues Objekt auswählen
+        this.clearSelection();
+        this.addToSelection(clickedLine);
 
-      // Canvas neu zeichnen, um Selektionsrahmen anzuzeigen
-      this.redrawCanvas(this.currentDrawingLines);
+        // Dragging für ein einzelnes Objekt starten
+        this.selectedLine = clickedLine;
+        this.isDragging = true;
+        this.dragStartPoint = point;
+        this.dragStartLinePosition = [...clickedLine.points];
+      }
+    } else if (!isShiftPressed) {
+      // Klick ins Leere ohne Shift löscht die Auswahl
+      this.clearSelection();
+    }
+
+    // Canvas neu zeichnen
+    this.redrawCanvas(this.currentDrawingLines);
+  }
+
+  /**
+   * Startet das Verschieben mehrerer ausgewählter Objekte
+   */
+  private startDraggingMultipleObjects(point: Point, clickedLine: DrawingLine): void {
+    this.isDragging = true;
+    this.dragStartPoint = point;
+    this.selectedLine = clickedLine; // Das angeklickte Objekt als Hauptauswahl setzen
+
+    // Speichere die Startpositionen aller ausgewählten Objekte
+    this.dragStartLinesPositions.clear();
+    this.selectedLines.forEach(line => {
+      if (line.id) {
+        this.dragStartLinesPositions.set(line.id, [...line.points]);
+      }
+    });
+  }
+
+  /**
+   * Startet das Zeichnen einer Auswahlbox
+   */
+  private startSelectionBox(startPoint: Point): void {
+    this.isMultiSelecting = true;
+    this.selectionStartPoint = startPoint;
+    this.selectionRect = {
+      x: startPoint.x,
+      y: startPoint.y,
+      width: 0,
+      height: 0
+    };
+
+    // Wenn nicht mit Shift, bestehende Auswahl aufheben
+    if (!this.isGrouped) {
+      this.clearSelection();
+    }
+  }
+
+  /**
+   * Ein Objekt zur Auswahl hinzufügen oder daraus entfernen
+   */
+  private toggleSelection(line: DrawingLine): void {
+    if (!line.id) return;
+
+    const index = this.selectedLines.findIndex(l => l.id === line.id);
+    if (index >= 0) {
+      // Aus Auswahl entfernen
+      line.selected = false;
+      this.selectedLines.splice(index, 1);
     } else {
-      // Neu zeichnen, um alte Selektionsrahmen zu entfernen
-      this.redrawCanvas(this.currentDrawingLines);
+      // Zur Auswahl hinzufügen
+      line.selected = true;
+      this.selectedLines.push(line);
     }
+  }
+
+  /**
+   * Objekt zur Auswahl hinzufügen
+   */
+  private addToSelection(line: DrawingLine): void {
+    if (!line.id) return;
+
+    // Prüfen, ob das Objekt bereits ausgewählt ist
+    const exists = this.selectedLines.some(l => l.id === line.id);
+    if (!exists) {
+      line.selected = true;
+      this.selectedLines.push(line);
+    }
+  }
+
+  /**
+   * Auswahl leeren
+   */
+  private clearSelection(): void {
+    // Alle Objekte deselektieren
+    this.selectedLines.forEach(line => {
+      line.selected = false;
+    });
+    this.selectedLines = [];
+    this.selectedLine = null;
+
+    // Gruppierungszustand zurücksetzen, wenn nicht im Gruppierungsmodus
+    if (!this.isGrouped) {
+      this.groupedLines = [];
+    }
+  }
+
+  /**
+   * Startet das Verschieben einer Gruppe von Objekten
+   */
+  private startDraggingGroup(point: Point, clickedLine: DrawingLine): void {
+    this.isDragging = true;
+    this.dragStartPoint = point;
+
+    // Startpositionen aller Objekte in der Gruppe speichern
+    this.dragStartLinesPositions.clear();
+
+    // Eine Hilfsliste für das Dragging erstellen, die alle gruppierten Objekte enthält
+    this.selectedLines = this.currentDrawingLines.filter(line =>
+      line.id && this.groupedLines.includes(line.id)
+    );
+
+    // Alle Objekte als ausgewählt markieren
+    this.selectedLines.forEach(line => {
+      line.selected = true;
+      if (line.id) {
+        this.dragStartLinesPositions.set(line.id, [...line.points]);
+      }
+    });
+
+    // Auch das angeklickte Objekt als Hauptauswahl setzen (für andere Operationen)
+    this.selectedLine = clickedLine;
   }
 
   /**
@@ -488,6 +789,11 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
 
       if (this.isDragging && this.canDrag()) {
         this.handleDragMove(currentPoint);
+        return;
+      }
+
+      if (this.isMultiSelecting) {
+        this.handleSelectionBoxMove(currentPoint);
         return;
       }
     }
@@ -583,7 +889,16 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    * Checks if all conditions for dragging are met
    */
   private canDrag(): boolean {
-    return Boolean(this.selectedLine && this.dragStartPoint && this.dragStartLinePosition);
+    // Bei Mehrfachauswahl anders prüfen als bei Einzelauswahl
+    if (this.selectedLines.length > 1) {
+      // Bei mehreren ausgewählten Objekten ist wichtig, dass:
+      // - ein Startpunkt definiert ist
+      // - mindestens ein Objekt eine Startposition hat
+      return Boolean(this.dragStartPoint) && this.dragStartLinesPositions.size > 0;
+    } else {
+      // Bei einem Objekt wie bisher prüfen
+      return Boolean(this.selectedLine && this.dragStartPoint && this.dragStartLinePosition);
+    }
   }
 
   /**
@@ -593,18 +908,58 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     const offsetX = currentPoint.x - this.dragStartPoint!.x;
     const offsetY = currentPoint.y - this.dragStartPoint!.y;
 
+    // Wenn wir mehrere Objekte ausgewählt haben (egal ob gruppiert oder nicht)
+    if (this.selectedLines.length > 1) {
+      // Alle ausgewählten Objekte verschieben
+      this.moveMultipleObjects(offsetX, offsetY);
+    } else {
+      // Einzelnes Objekt verschieben
+      this.moveSingleObject(offsetX, offsetY);
+    }
+
+    // Canvas neu zeichnen
+    this.redrawCanvas(this.currentDrawingLines);
+  }
+
+  /**
+   * Verschiebt ein einzelnes Objekt
+   */
+  private moveSingleObject(offsetX: number, offsetY: number): void {
+    if (!this.selectedLine || !this.dragStartLinePosition) return;
+
     // Neues Punktarray mit den verschobenen Punkten erstellen
-    const movedPoints = this.dragStartLinePosition!.map(point => ({
+    const movedPoints = this.dragStartLinePosition.map(point => ({
       x: point.x + offsetX,
       y: point.y + offsetY
     }));
 
     // Punkte aktualisieren
-    this.selectedLine!.points = movedPoints;
-    this.selectedLine!.bounds = DrawingLineUtils.calculateBounds(this.selectedLine!) || undefined;
+    this.selectedLine.points = movedPoints;
+    this.selectedLine.bounds = DrawingLineUtils.calculateBounds(this.selectedLine) || undefined;
+  }
 
-    // Canvas neu zeichnen
-    this.redrawCanvas(this.currentDrawingLines);
+  /**
+   * Verschiebt mehrere Objekte gleichzeitig
+   */
+  private moveMultipleObjects(offsetX: number, offsetY: number): void {
+    // Alle ausgewählten Objekte verschieben
+    for (const line of this.selectedLines) {
+      if (!line.id) continue;
+
+      // Nur verschieben, wenn wir Startpositionen für dieses Objekt haben
+      const startPositions = this.dragStartLinesPositions.get(line.id);
+      if (!startPositions) continue;
+
+      // Neue Punktposition berechnen
+      const movedPoints = startPositions.map(point => ({
+        x: point.x + offsetX,
+        y: point.y + offsetY
+      }));
+
+      // Punkte und Bounds aktualisieren
+      line.points = movedPoints;
+      line.bounds = DrawingLineUtils.calculateBounds(line) || undefined;
+    }
   }
 
   /**
@@ -620,6 +975,171 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     } else if (this.currentTool !== 'text') {
       this.previewShape();
     }
+  }
+
+  /**
+   * Behandelt die Mausbewegung während der Mehrfachauswahl (Auswahlbox ziehen)
+   */
+  private handleSelectionBoxMove(currentPoint: Point): void {
+    if (!this.isMultiSelecting || !this.selectionStartPoint || !this.selectionRect) return;
+
+    // Berechne die Auswahlbox basierend auf Start- und aktuellem Punkt
+    const x = Math.min(this.selectionStartPoint.x, currentPoint.x);
+    const y = Math.min(this.selectionStartPoint.y, currentPoint.y);
+    const width = Math.abs(currentPoint.x - this.selectionStartPoint.x);
+    const height = Math.abs(currentPoint.y - this.selectionStartPoint.y);
+
+    this.selectionRect = { x, y, width, height };
+
+    // Canvas neu zeichnen und Auswahlbox anzeigen
+    this.redrawCanvas(this.currentDrawingLines);
+    this.drawSelectionBox(this.selectionRect);
+  }
+
+  /**
+   * Beendet die Mehrfachauswahl und wählt alle Objekte innerhalb der Box aus
+   */
+  private finalizeSelectionBox(): void {
+    if (!this.selectionRect) return;
+
+    // Alle Objekte finden, die vollständig innerhalb der Auswahlbox liegen
+    const selectedObjects = this.findLinesInRect(this.selectionRect);
+
+    // Wenn wir nicht mit Shift auswählen, bestehende Auswahl aufheben
+    // Da wir keinen Zugriff auf das Event haben, verwenden wir eine Hilfsvariable
+    if (!this.isMultiSelectKeyPressed) {
+      this.clearSelection();
+    }
+
+    // Alle gefundenen Objekte zur Auswahl hinzufügen
+    selectedObjects.forEach(line => this.addToSelection(line));
+
+    // Wenn genau ein Objekt ausgewählt ist, setze es als Hauptauswahl
+    if (this.selectedLines.length === 1) {
+      this.selectedLine = this.selectedLines[0];
+    }
+
+    // Auswahl zurücksetzen
+    this.isMultiSelecting = false;
+    this.selectionStartPoint = null;
+    this.selectionRect = null;
+
+    // Canvas neu zeichnen
+    this.redrawCanvas(this.currentDrawingLines);
+  }
+
+  /**
+   * Zeichnet die Auswahlbox
+   */
+  private drawSelectionBox(rect: { x: number, y: number, width: number, height: number }): void {
+    if (!this.ctx) return;
+
+    this.ctx.save();
+    this.ctx.strokeStyle = '#4285F4';
+    this.ctx.lineWidth = 1;
+    this.ctx.setLineDash([5, 5]);
+    this.ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+
+    // Transparente Füllung
+    this.ctx.fillStyle = 'rgba(66, 133, 244, 0.1)';
+    this.ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+    this.ctx.restore();
+  }
+
+  /**
+   * Findet alle Linien innerhalb eines Rechtecks
+   */
+  private findLinesInRect(rect: { x: number, y: number, width: number, height: number }): DrawingLine[] {
+    return this.currentDrawingLines.filter(line => {
+      // Sicherstellen, dass Bounds berechnet sind
+      if (!line.bounds) {
+        line.bounds = DrawingLineUtils.calculateBounds(line) || undefined;
+      }
+
+      if (!line.bounds) return false;
+
+      // Prüfen, ob die Bounds des Objekts vollständig innerhalb des Rechtecks liegen
+      return (
+        line.bounds.x >= rect.x &&
+        line.bounds.y >= rect.y &&
+        line.bounds.x + line.bounds.width <= rect.x + rect.width &&
+        line.bounds.y + line.bounds.height <= rect.y + rect.height
+      );
+    });
+  }
+
+  /**
+   * Gruppiert die aktuell ausgewählten Objekte
+   */
+  groupSelectedObjects(): void {
+    if (this.selectedLines.length < 2) {
+      // Mindestens 2 Objekte müssen ausgewählt sein
+      return;
+    }
+
+    // Setze den Gruppierungszustand
+    this.isGrouped = true;
+
+    // Speichere die IDs der gruppierten Objekte
+    this.groupedLines = this.selectedLines.map(line => line.id!).filter(id => id !== undefined);
+
+    // Info-Meldung zeigen
+    this.showTooltip(`${this.selectedLines.length} Objekte gruppiert`, this.getGroupCenter());
+  }
+
+  /**
+   * Hebt die Gruppierung auf
+   */
+  ungroupObjects(): void {
+    if (!this.isGrouped) return;
+
+    // Gruppierungszustand zurücksetzen
+    this.isGrouped = false;
+
+    // Info-Meldung zeigen
+    const count = this.groupedLines.length;
+    this.showTooltip(`Gruppierung von ${count} Objekten aufgehoben`, this.getGroupCenter());
+
+    // Gruppenliste leeren
+    this.groupedLines = [];
+  }
+
+  /**
+   * Berechnet den Mittelpunkt der aktuellen Gruppe oder Auswahl
+   */
+  private getGroupCenter(): Point {
+    // Standardposition, falls keine Auswahl vorhanden
+    let center: Point = { x: this.canvasWidth / 2, y: this.canvasHeight / 2 };
+
+    const lines = this.isGrouped
+      ? this.currentDrawingLines.filter(line => line.id && this.groupedLines.includes(line.id))
+      : this.selectedLines;
+
+    if (lines.length > 0) {
+      // Gemeinsame Bounds berechnen
+      let minX = Number.MAX_VALUE;
+      let minY = Number.MAX_VALUE;
+      let maxX = Number.MIN_VALUE;
+      let maxY = Number.MIN_VALUE;
+
+      lines.forEach(line => {
+        if (line.bounds) {
+          minX = Math.min(minX, line.bounds.x);
+          minY = Math.min(minY, line.bounds.y);
+          maxX = Math.max(maxX, line.bounds.x + line.bounds.width);
+          maxY = Math.max(maxY, line.bounds.y + line.bounds.height);
+        }
+      });
+
+      // Mittelpunkt berechnen
+      center = {
+        x: minX + (maxX - minX) / 2,
+        y: minY + (maxY - minY) / 2
+      };
+    }
+
+    return center;
   }
 
   /**
@@ -703,14 +1223,25 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
       this.isDragging = false;
       this.dragStartPoint = null;
       this.dragStartLinePosition = null;
+      this.dragStartLinesPositions.clear();
 
-      // Aktualisiere die Zeichnung im Service
-      if (this.selectedLine) {
+      // Wenn mehrere Objekte ausgewählt sind, aktualisiere alle im Service
+      if (this.selectedLines.length > 1) {
+        this.drawingService.updateMultipleLines(this.selectedLines);
+      }
+      // Sonst aktualisiere nur das eine ausgewählte Objekt
+      else if (this.selectedLine) {
         this.drawingService.updateLine(this.selectedLine);
       }
 
       // Cursor zurücksetzen
       this.updateCanvasCursor();
+      return;
+    }
+
+    // Mehrfachauswahl beenden
+    if (this.isMultiSelecting) {
+      this.finalizeSelectionBox();
       return;
     }
 
@@ -797,11 +1328,76 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     event.preventDefault();
     if (event.touches.length === 1) {
       const touch = event.touches[0];
-      const mouseEvent = new MouseEvent('mousedown', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      this.onMouseDown(mouseEvent);
+      // Canvas-Position berücksichtigen für korrekte Koordinatenumrechnung
+      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+      const point = {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top
+      };
+
+      // Basierend auf dem ausgewählten Werkzeug entsprechende Aktionen ausführen
+      if (this.currentTool === 'select') {
+        this.handleSelectionTouchStart(point);
+      } else if (this.currentTool === 'eraser') {
+        this.handleEraserTouchStart(point);
+      } else if (this.currentTool === 'text') {
+        if (!this.isTextEditing) {
+          this.startTextEditing(point);
+        }
+      } else {
+        // Zeichenwerkzeuge (Pinsel, Linie, Rechteck, Kreis)
+        this.isDrawing = true;
+        this.drawingService.startDrawing(point);
+      }
+    }
+  }
+
+  /**
+   * Hilfsmethode zur Behandlung von Touch-Ereignissen im Auswahlmodus
+   */
+  private handleSelectionTouchStart(point: Point): void {
+    // Prüfen, ob ein Objekt an der Berührungsposition liegt
+    const clickedLine = this.findLineAtPoint(point);
+
+    if (clickedLine) {
+      // Prüfen, ob das angeklickte Objekt bereits ausgewählt ist
+      if (clickedLine.selected && this.selectedLines.length > 1) {
+        // Wenn bereits mehrere Objekte ausgewählt sind und eines davon angeklickt wurde,
+        // alle gemeinsam verschieben
+        this.startDraggingMultipleObjects(point, clickedLine);
+      }
+      // Prüfen, ob das angeklickte Objekt zu einer Gruppe gehört
+      else if (this.isGrouped && clickedLine.id && this.groupedLines.includes(clickedLine.id)) {
+        // Wenn das Objekt Teil einer Gruppe ist, die gesamte Gruppe verschieben
+        this.startDraggingGroup(point, clickedLine);
+      }
+      else {
+        // Andernfalls neue Einzelauswahl
+        this.clearSelection();
+        this.addToSelection(clickedLine);
+
+        // Dragging-Zustand für ein einzelnes Objekt einrichten
+        this.selectedLine = clickedLine;
+        this.isDragging = true;
+        this.dragStartPoint = point;
+        this.dragStartLinePosition = [...clickedLine.points];
+      }
+    } else {
+      // Wenn kein Objekt getroffen wurde, Auswahlbox starten
+      this.startSelectionBox(point);
+    }
+
+    // Canvas neu zeichnen
+    this.redrawCanvas(this.currentDrawingLines);
+  }
+
+  /**
+   * Hilfsmethode zur Behandlung von Touch-Ereignissen im Radierer-Modus
+   */
+  private handleEraserTouchStart(point: Point): void {
+    const objectToErase = this.findLineAtPoint(point);
+    if (objectToErase && objectToErase.id) {
+      this.drawingService.deleteDrawingObject(objectToErase.id);
     }
   }
 
@@ -811,14 +1407,41 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    */
   onTouchMove(event: TouchEvent): void {
     event.preventDefault();
-    if (event.touches.length === 1 && this.isDrawing) {
+    if (event.touches.length === 1) {
       const touch = event.touches[0];
+      // Canvas-Position berücksichtigen für korrekte Koordinatenumrechnung
+      const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+      const point = {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top
+      };
 
-      const mouseEvent = new MouseEvent('mousemove', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      this.onMouseMove(mouseEvent);
+      // Je nach aktuellem Zustand und Werkzeug entsprechende Aktionen ausführen
+      if (this.isDrawing) {
+        // Beim Zeichnen
+        this.drawingService.continueDrawing(point);
+
+        if (this.currentTool === 'brush') {
+          this.drawLine(this.drawingService.getCurrentLine());
+        } else if (this.currentTool !== 'text') {
+          this.previewShape();
+        }
+      } else if (this.isDragging && this.currentTool === 'select') {
+        // Beim Verschieben von Objekten
+        const offsetX = point.x - this.dragStartPoint!.x;
+        const offsetY = point.y - this.dragStartPoint!.y;
+
+        if (this.selectedLines.length > 1) {
+          this.moveMultipleObjects(offsetX, offsetY);
+        } else {
+          this.moveSingleObject(offsetX, offsetY);
+        }
+
+        this.redrawCanvas(this.currentDrawingLines);
+      } else if (this.isMultiSelecting) {
+        // Bei der Erstellung einer Auswahlbox
+        this.handleSelectionBoxMove(point);
+      }
     }
   }
 
@@ -828,8 +1451,40 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    */
   onTouchEnd(event: TouchEvent): void {
     event.preventDefault();
-    const mouseEvent = new MouseEvent('mouseup', {});
-    this.onMouseUp(mouseEvent);
+
+    // Canvas-Position für eventuelle Berechnung der letzten Position
+    const rect = this.canvasRef.nativeElement.getBoundingClientRect();
+    const lastTouch = event.changedTouches[0];
+    const point = {
+      x: lastTouch.clientX - rect.left,
+      y: lastTouch.clientY - rect.top
+    };
+
+    // Zeichenvorgang beenden
+    if (this.isDrawing) {
+      this.drawingService.endDrawing(point);
+      this.isDrawing = false;
+    }
+
+    // Drag & Drop beenden
+    if (this.isDragging) {
+      this.isDragging = false;
+      this.dragStartPoint = null;
+      this.dragStartLinePosition = null;
+      this.dragStartLinesPositions.clear();
+
+      // Änderungen speichern
+      if (this.selectedLines.length > 1) {
+        this.drawingService.updateMultipleLines(this.selectedLines);
+      } else if (this.selectedLine) {
+        this.drawingService.updateLine(this.selectedLine);
+      }
+    }
+
+    // Mehrfachauswahl beenden
+    if (this.isMultiSelecting) {
+      this.finalizeSelectionBox();
+    }
   }
 
   /**

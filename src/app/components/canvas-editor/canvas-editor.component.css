@@ -134,7 +134,7 @@ canvas.select-mode.dragging {
 .toolbar-container {
   position: sticky;
   top: 0;
-  z-index: 1000;
+  z-index: 999;
   background-color: var(--primary-color);
 }
 
@@ -258,9 +258,6 @@ canvas.select-mode.dragging {
   min-width: 70px;
 }
 
-.stroke-width {
-  min-width: 150px;
-}
 
 input[type="color"] {
   border: none;
