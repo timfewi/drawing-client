@@ -1,5 +1,5 @@
 header {
-  background-color: white;
+  background-color: var(--navBackgroundColor);
   box-shadow: var(--shadow-sm);
   position: sticky;
   top: 0;
@@ -24,7 +24,7 @@ header.hidden {
   display: flex;
   align-items: center;
   text-decoration: none;
-  color: var(--text-color);
+  color: var(--textColor);
   font-weight: 700;
   font-size: 1.25rem;
 }
@@ -40,7 +40,7 @@ header.hidden {
   border: none;
   font-size: 1.5rem;
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--textColor);
 }
 
 nav ul {
@@ -52,7 +52,7 @@ nav ul {
 }
 
 nav a {
-  color: var(--text-light);
+  color: var(--textLight);
   text-decoration: none;
   font-weight: 500;
   transition: color 0.2s;
@@ -61,24 +61,24 @@ nav a {
 }
 
 nav a:hover {
-  color: var(--primary-color);
+  color: var(--primaryColor);
 }
 
 .active-link {
-  color: var(--primary-color);
+  color: var(--primaryColor);
   font-weight: 600;
 }
 
 .auth-link {
-  background-color: var(--primary-color);
-  color: white !important;
+  background-color: var(--primaryColor);
+  color: var(--backgroundColor) !important;
   padding: 0.5rem 1rem !important;
   border-radius: var(--border-radius-sm);
   transition: background-color 0.2s;
 }
 
 .auth-link:hover {
-  background-color: var(--primary-dark);
+  background-color: var(--primaryDark);
 }
 
 .user-menu {
@@ -95,7 +95,7 @@ nav a:hover {
 }
 
 .user-menu-toggle:hover {
-  background-color: var(--border-color);
+  background-color: var(--borderColor);
 }
 
 .user-avatar {
@@ -113,8 +113,8 @@ nav a:hover {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background-color: var(--primary-color);
-  color: white;
+  background-color: var(--primaryColor);
+  color: var(--backgroundColor);
   font-weight: 600;
   margin-right: 0.5rem;
 }
@@ -135,7 +135,7 @@ nav a:hover {
   position: absolute;
   top: 100%;
   right: 0;
-  background-color: white;
+  background-color: var(--backgroundColor);
   border-radius: var(--border-radius-sm);
   box-shadow: var(--shadow-sm);
   min-width: 180px;
@@ -155,16 +155,16 @@ nav a:hover {
 
 .user-dropdown a {
   padding: 0.75rem 1rem;
-  color: var(--text-color);
+  color: var(--textColor);
   transition: background-color 0.2s;
 }
 
 .user-dropdown a:hover {
-  background-color: var(--background-color);
+  background-color: var(--backgroundColor);
 }
 
 .logout-link {
-  color: var(--secondary-dark) !important;
+  color: var(--secondaryDark) !important;
   cursor: pointer;
 }
 
@@ -181,7 +181,7 @@ nav a:hover {
     position: absolute;
     top: 100%;
     right: 0;
-    background-color: white;
+    background-color: var(--backgroundColor);
     box-shadow: var(--shadow-sm);
     border-radius: var(--border-radius-sm);
     flex-direction: column;

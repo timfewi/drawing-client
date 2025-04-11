@@ -1,7 +1,7 @@
 .canvas-editor-container {
   display: flex;
   flex-direction: column;
-  background-color: var(--background-color);
+  background-color: var(--canvasBackgroundColor);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--shadow-md);
   margin: var(--spacing-lg) 0;
@@ -24,7 +24,7 @@
   margin: 0;
   padding: 0;
   box-shadow: none;
-  background-color: var(--background-color);
+  background-color: var(--canvasBackgroundColor);
   display: flex;
   flex-direction: column;
 }
@@ -112,7 +112,7 @@ canvas.select-mode.dragging {
   right: -10px;
   width: 20px;
   height: 20px;
-  background-color: var(--primary-color);
+  background-color: var(--primaryColor);
   border-radius: 50%;
   cursor: nwse-resize;
   opacity: 0.7;
@@ -135,7 +135,7 @@ canvas.select-mode.dragging {
   position: sticky;
   top: 0;
   z-index: 999;
-  background-color: var(--primary-color);
+  background-color: var(--primaryColor);
 }
 
 /* Toolbar-Styles */
@@ -147,7 +147,7 @@ canvas.select-mode.dragging {
   color: white;
   flex-wrap: wrap;
   gap: var(--spacing-md);
-  background-color: var(--primary-color);
+  background-color: var(--primaryColor);
 }
 
 /* Responsive Toolbar für Fullscreen */
@@ -164,7 +164,7 @@ canvas.select-mode.dragging {
 }
 
 .responsive-toolbar::-webkit-scrollbar-thumb {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(225, 80, 80, 0.3);
   border-radius: var(--border-radius-sm);
 }
 
@@ -221,12 +221,24 @@ canvas.select-mode.dragging {
 
 .tool-button i, .action-button i {
   font-size: 1.2rem;
-  color: white;
+  color: var(--iconColor);
+}
+
+.tool-button:hover i, .action-button:hover i {
+  color: var(--iconHoverColor);
+}
+
+.tool-button.active i {
+  color: var(--iconActiveColor);
 }
 
 .action-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.action-button:disabled i {
+  color: var(--iconDisabledColor);
 }
 
 /* Farb- und Breitenauswahl */
@@ -259,15 +271,95 @@ canvas.select-mode.dragging {
 }
 
 input[type="color"] {
-  border: none;
-  border-radius: var(--border-radius-sm);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   width: 30px;
   height: 30px;
+  background: transparent;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  padding: 0;
   cursor: pointer;
 }
 
+/* Fokus-Styles */
+input[type="color"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(79, 156, 249, 0.2);
+}
+
+/* Entferne zusätzlichen Padding beim Swatch-Wrapper */
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+/* Swatch-Styling für WebKit */
+input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: var(--border-radius-sm);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Swatch-Styling für Firefox */
+input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: var(--border-radius-sm);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Swatch-Styling für Microsoft Edge/IE */
+input[type="color"]::-ms-fill,
+input[type="color"]::-ms-reveal {
+  border: none;
+  border-radius: var(--border-radius-sm);
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Reset appearance for cross-browser styling */
 input[type="range"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  width: 100%;
+  background: transparent;
   cursor: pointer;
+}
+
+/* Track styles for WebKit browsers */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: var(--secondaryDark); /* Track color */
+  border-radius: var(--border-radius-sm);
+}
+
+/* Thumb styles for WebKit browsers */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 20px;
+  width: 20px;
+  background: var(--secondaryDark); /* Thumb color */
+  border-radius: 50%;
+  margin-top: -6px; /* Centers the thumb on the track */
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
+}
+
+/* Track styles for Firefox */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: var(--secondaryDark);
+  border-radius: var(--border-radius-sm);
+}
+
+/* Thumb styles for Firefox */
+input[type="range"]::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  background: var(--secondaryDark);
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 0 2px rgba(0,0,0,0.5);
 }
 
 .width-display {
@@ -281,12 +373,12 @@ input[type="range"] {
 .canvas-container {
   position: relative;
   overflow: hidden;
-  background-color: var(--background-color);
+  background-color: var(--canvasBackgroundColor);
   background-image:
-    linear-gradient(45deg, var(--border-color) 25%, transparent 25%),
-    linear-gradient(-45deg, var(--border-color) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, var(--border-color) 75%),
-    linear-gradient(-45deg, transparent 75%, var(--border-color) 75%);
+    linear-gradient(45deg, var(--borderColor) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--borderColor) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--borderColor) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--borderColor) 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
   flex: 1;
@@ -303,10 +395,10 @@ input[type="range"] {
 
 canvas {
   display: block;
-  background-color: white;
+  background-color: var(--canvasBackgroundColor);
   touch-action: none; /* Verhindert das Standardverhalten bei Touch-Gesten */
   cursor: crosshair;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--borderColor);
   box-shadow: var(--shadow-sm);
   max-width: 100%;
   max-height: 100%;
@@ -336,8 +428,8 @@ canvas.eraser-mode.eraser-hover {
   display: flex;
   justify-content: space-between;
   padding: 8px 15px;
-  background-color: var(--background-color);
-  border-top: 1px solid var(--border-color);
+  background-color: var(--secondaryColor);
+  border-top: 1px solid var(--borderColor);
   color: var(--text-light);
   font-size: 12px;
 }

@@ -6,6 +6,7 @@ import { RouterModule, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { HeaderService } from '../../services/header.service';
 import { User } from '../../models/User.model';
+import { ThemeDropdownComponent } from '../theme-dropdown/theme-dropdown.component';
 
 /**
  * Header-Komponente
@@ -18,7 +19,7 @@ import { User } from '../../models/User.model';
   templateUrl: './header.component.html',
   styleUrls: ['./header.component.css'],
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive]
+  imports: [CommonModule, RouterModule, RouterLink, RouterLinkActive, ThemeDropdownComponent]
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   @HostBinding('class.hidden') isHidden = false;

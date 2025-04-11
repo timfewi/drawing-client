@@ -1,4 +1,18 @@
 <app-header></app-header>
+
+<!-- Debug Panel - Remove or hide in production -->
+<!-- <div class="theme-debug-panel" *ngIf="showDebugPanel">
+  <h3>Active Theme: {{currentThemeName}}</h3>
+  <div class="color-samples">
+    <div class="color-sample primary-color">Primary</div>
+    <div class="color-sample secondary-color">Secondary</div>
+    <div class="color-sample background-color">Background</div>
+    <div class="color-sample text-color">Text</div>
+  </div>
+  <button (click)="testThemeChange()">Switch Theme</button>
+  <button (click)="forceRefresh()">Force Refresh</button>
+</div> -->
+
 <main class="main-content">
   <router-outlet></router-outlet>
 </main>

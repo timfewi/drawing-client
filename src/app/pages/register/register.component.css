@@ -4,7 +4,7 @@
   align-items: center;
   min-height: calc(100vh - 80px); /* Adjust based on header height */
   padding: var(--spacing-md);
-  background-color: var(--background-color);
+  background-color: var(--backgroundColor);
 }
 
 .register-form-wrapper {
@@ -18,7 +18,7 @@
 
 .register-title {
   margin-bottom: 1.5rem;
-  color: var(--text-color);
+  color: var(--textColor);
   text-align: center;
   font-size: 1.8rem;
 }
@@ -37,14 +37,14 @@
 
 .form-group label {
   font-weight: 600;
-  color: var(--text-light);
+  color: var(--textLight);
 }
 
 .form-group input[type="text"],
 .form-group input[type="email"],
 .form-group input[type="password"] {
   padding: 0.75rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--borderColor);
   border-radius: var(--border-radius-sm);
   font-size: 1rem;
   transition: border-color 0.2s;
@@ -52,7 +52,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--primary-color);
+  border-color: var(--primaryColor);
   box-shadow: 0 0 0 2px rgba(79, 156, 249, 0.2);
 }
 
@@ -79,7 +79,7 @@
 }
 
 .checkbox-wrapper a {
-  color: var(--primary-color);
+  color: var(--primaryColor);
   text-decoration: none;
   font-weight: 600;
 }
@@ -89,14 +89,14 @@
 }
 
 .validation-error {
-  color: var(--secondary-dark);
+  color: var(--secondaryDark);
   font-size: 0.85rem;
   margin-top: 0.25rem;
 }
 
 .error-message {
   background-color: rgba(167, 74, 109, 0.1);
-  color: var(--secondary-dark);
+  color: var(--secondaryDark);
   padding: 0.75rem;
   border-radius: var(--border-radius-sm);
   margin-bottom: 1.5rem;
@@ -110,8 +110,8 @@
 .btn-primary {
   width: 100%;
   padding: 0.75rem;
-  background-color: var(--primary-color);
-  color: white;
+  background-color: var(--primaryColor);
+  color: var(--backgroundColor);
   border: none;
   border-radius: var(--border-radius-sm);
   font-size: 1rem;
@@ -121,22 +121,22 @@
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-dark);
+  background-color: var(--primaryDark);
 }
 
 .btn-primary:disabled {
-  background-color: var(--primary-light);
+  background-color: var(--primaryLight);
   cursor: not-allowed;
 }
 
 .form-footer {
   margin-top: 1.5rem;
   text-align: center;
-  color: var(--text-light);
+  color: var(--textLight);
 }
 
 .form-footer a {
-  color: var(--primary-color);
+  color: var(--primaryColor);
   text-decoration: none;
   font-weight: 600;
 }

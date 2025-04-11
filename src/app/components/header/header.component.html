@@ -11,6 +11,9 @@
 
     <nav>
       <ul [class.visible]="mobileMenuVisible">
+        <li>
+          <app-theme-dropdown></app-theme-dropdown>
+        </li>
         <li><a routerLink="/" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">Home</a></li>
         <li><a routerLink="/gallery" routerLinkActive="active-link">Gallery</a></li>
         <li><a routerLink="/about" routerLinkActive="active-link">About</a></li>
@@ -19,6 +22,8 @@
         <li *ngIf="!(currentUser$ | async)">
           <a routerLink="/login" routerLinkActive="active-link" class="auth-link">Login</a>
         </li>
+
+
 
         <!-- Angemeldet -->
         <li *ngIf="currentUser$ | async" class="user-menu">

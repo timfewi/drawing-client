@@ -12,7 +12,7 @@
 }
 
 .modal-container {
-  background-color: var(--background-color);
+  background-color: var(--backgroundColor);
   border-radius: var(--border-radius-md);
   box-shadow: var(--shadow-md);
   min-width: 300px;
@@ -22,7 +22,7 @@
 
 .modal-content h2 {
   margin-top: 0;
-  color: var(--text-color);
+  color: var(--textColor);
   font-size: 1.5rem;
 }
 
@@ -42,13 +42,13 @@ button {
 }
 
 .btn-cancel {
-  background-color: var(--border-color);
-  color: var(--text-color);
+  background-color: var(--secondaryColor);
+  color: var(--backgroundColor);
 }
 
 .btn-confirm {
-  background-color: var(--primary-color);
-  color: white;
+  background-color: var(--primaryColor);
+  color: var(--backgroundColor);
 }
 
 .btn-cancel:hover {
@@ -56,5 +56,5 @@ button {
 }
 
 .btn-confirm:hover {
-  background-color: var(--primary-dark);
+  background-color: var(--primaryDark);
 }
