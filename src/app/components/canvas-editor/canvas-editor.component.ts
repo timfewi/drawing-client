@@ -991,8 +991,23 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
 
     this.selectionRect = { x, y, width, height };
 
-    // Canvas neu zeichnen und Auswahlbox anzeigen
+    // In Echtzeit überprüfen, welche Objekte unter der Auswahlbox liegen
+    const potentialSelection = this.findLinesInRect(this.selectionRect);
+
+    // Temporär für die Vorschau alle vorherigen Selektionen entfernen
+    this.currentDrawingLines.forEach(line => {
+      line.selected = false;
+    });
+
+    // Objekte, die unter der Auswahlbox liegen, temporär als ausgewählt markieren
+    potentialSelection.forEach(line => {
+      line.selected = true;
+    });
+
+    // Canvas neu zeichnen mit den vorläufig ausgewählten Objekten
     this.redrawCanvas(this.currentDrawingLines);
+
+    // Auswahlbox darüber zeichnen
     this.drawSelectionBox(this.selectionRect);
   }
 
@@ -1002,7 +1017,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   private finalizeSelectionBox(): void {
     if (!this.selectionRect) return;
 
-    // Alle Objekte finden, die vollständig innerhalb der Auswahlbox liegen
+    // Alle Objekte finden, die mit der Auswahlbox überlappen oder darin enthalten sind
     const selectedObjects = this.findLinesInRect(this.selectionRect);
 
     // Wenn wir nicht mit Shift auswählen, bestehende Auswahl aufheben
@@ -1048,7 +1063,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Findet alle Linien innerhalb eines Rechtecks
+   * Findet alle Linien, die mit einem Rechteck überlappen oder darin enthalten sind
    */
   private findLinesInRect(rect: { x: number, y: number, width: number, height: number }): DrawingLine[] {
     return this.currentDrawingLines.filter(line => {
@@ -1059,13 +1074,20 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
 
       if (!line.bounds) return false;
 
-      // Prüfen, ob die Bounds des Objekts vollständig innerhalb des Rechtecks liegen
-      return (
-        line.bounds.x >= rect.x &&
-        line.bounds.y >= rect.y &&
-        line.bounds.x + line.bounds.width <= rect.x + rect.width &&
-        line.bounds.y + line.bounds.height <= rect.y + rect.height
+      // Intelligente Auswahl: Objekt wird ausgewählt, wenn es mit der Auswahlbox überlappt
+      // Dafür prüfen wir, ob sich die beiden Rechtecke überschneiden
+      const objectBounds = line.bounds;
+
+      // Prüfen auf Überlappung der Rechtecke
+      const overlaps = !(
+        // Rechtecke überlappen nicht, wenn eines der folgenden Kriterien erfüllt ist:
+        objectBounds.x > rect.x + rect.width || // Objekt ist rechts von der Auswahlbox
+        objectBounds.x + objectBounds.width < rect.x || // Objekt ist links von der Auswahlbox
+        objectBounds.y > rect.y + rect.height || // Objekt ist unterhalb der Auswahlbox
+        objectBounds.y + objectBounds.height < rect.y // Objekt ist oberhalb der Auswahlbox
       );
+
+      return overlaps;
     });
   }
 
