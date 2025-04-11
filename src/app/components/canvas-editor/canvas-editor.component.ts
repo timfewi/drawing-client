@@ -117,11 +117,11 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     // Initialisierung der Subscriptions direkt im Konstruktor
     this.settingsSubscription = this.drawingService.settings$.subscribe(
       (settings: DrawingSettings) => {
-        this.currentTool = settings.tool as DrawingTool;
+        this.currentTool = settings.tool;
         this.currentColor = settings.color;
         this.currentWidth = settings.lineWidth;
         // Textgröße aus den Settings holen oder Standardwert verwenden
-        this.currentTextSize = settings.textSize || 16;
+        this.currentTextSize = settings.textSize ?? 16;
       }
     );
 
@@ -264,7 +264,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     // DOM-Update und Neuzeichnen mit erhöhter Stabilität
     setTimeout(() => {
       // Force reflow/repaint
-      document.body.offsetHeight;
+      const _ = document.body.offsetHeight;
 
       // Canvas-Element referenzieren
       const canvas = this.canvasRef.nativeElement;
@@ -1396,7 +1396,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    */
   private handleEraserTouchStart(point: Point): void {
     const objectToErase = this.findLineAtPoint(point);
-    if (objectToErase && objectToErase.id) {
+    if (objectToErase?.id) {
       this.drawingService.deleteDrawingObject(objectToErase.id);
     }
   }
@@ -1588,11 +1588,11 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   /**
    * Handler für die Größenänderung des Texteingabefelds während der Mausbewegung
    */
-  private handleTextResize = (event: MouseEvent): void => {
+  private readonly handleTextResize = (event: MouseEvent): void => {
     if (!this.isResizingTextInput || !this.textResizeStartPosition) return;
 
     // Berechne den Unterschied zur Startposition
-    const currentPoint = this.getPointFromMouseEvent(event);
+    const currentPoint = this.getPointFromEvent(event);
     const deltaX = currentPoint.x - this.textResizeStartPosition.x;
     const deltaY = currentPoint.y - this.textResizeStartPosition.y;
 
@@ -1620,7 +1620,7 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   /**
    * Beendet die Größenänderung des Texteingabefelds
    */
-  private finishTextResize = (): void => {
+  private readonly finishTextResize = (): void => {
     this.isResizingTextInput = false;
     this.textResizeStartPosition = null;
 
@@ -1639,17 +1639,6 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
     }, 10);
   }
 
-  /**
-   * Hilfsmethode, um einen Punkt aus einem globalen Maus-Event zu extrahieren
-   */
-  private getPointFromMouseEvent(event: MouseEvent): Point {
-    const canvas = this.canvasRef.nativeElement;
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
-  }
 
   /**
    * Extrahiert einen Punkt aus einem Maus-Event
@@ -1664,7 +1653,6 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
       y: event.clientY - rect.top
     };
   }
-
   /**
    * Löscht den Canvas
    */
