@@ -12,10 +12,12 @@
           <i class="fa fa-eraser"></i>
         </button>
         <!-- Text tool button -->
-        <button class="tool-button" (click)="selectTool('text')" [class.active]="currentTool === 'text'" title="Text (Alt+3)">
+        <button class="tool-button" (click)="selectTool('text')" [class.active]="currentTool === 'text'"
+          title="Text (Alt+3)">
           <i class="fa fa-font"></i>
         </button>
-        <button class="tool-button" (click)="selectTool('line')" [class.active]="currentTool === 'line'" title="Linie (Alt+4)">
+        <button class="tool-button" (click)="selectTool('line')" [class.active]="currentTool === 'line'"
+          title="Linie (Alt+4)">
           <i class="fa fa-minus"></i>
         </button>
         <button class="tool-button" (click)="selectTool('rectangle')" [class.active]="currentTool === 'rectangle'"
@@ -81,10 +83,10 @@
 
       <!-- Aktionen -->
       <div class="tool-group action-tools">
-        <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig (Alt+Y)">
+        <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig (Alt+Z)">
           <i class="fa fa-undo"></i>
         </button>
-        <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederherstellen (Alt+Z)">
+        <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederherstellen (Alt+Y)">
           <i class="fa fa-repeat"></i>
         </button>
         <button class="action-button" (click)="clear()" title="Löschen">
@@ -134,3 +136,12 @@
     <span>Breite: {{currentWidth}}px</span>
   </div>
 </div>
+
+<!-- Bestätigungsmodal für das Löschen des Canvas -->
+<app-confirm-modal
+  *ngIf="showModal"
+  [visible]="showModal"
+  [message]="'Sind Sie sicher, dass Sie die Zeichnung löschen möchten?'"
+  (confirm)="onConfirmClear()"
+  (cancel)="onCancelClear()">
+</app-confirm-modal>

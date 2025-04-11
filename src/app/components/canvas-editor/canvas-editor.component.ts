@@ -11,6 +11,8 @@ import { Subscription } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { DrawingLineUtils } from '../../utils/DrawingLineUtils.model';
 import { Bounds } from '../../models/Bounds.model';
+import { ConfirmModalComponent } from "../confirm-modal/confirm-modal.component";
+
 
 /**
  * Canvas-Editor-Komponente
@@ -23,7 +25,7 @@ import { Bounds } from '../../models/Bounds.model';
   templateUrl: './canvas-editor.component.html',
   styleUrls: ['./canvas-editor.component.css'],
   standalone: true,
-  imports: [CommonModule, FormsModule]
+  imports: [CommonModule, FormsModule, ConfirmModalComponent]
 })
 export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   /** Referenz auf das Canvas-Element */
@@ -109,6 +111,8 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   private initialBounds: Bounds | null = null;
 
   private resizeTimeout: any;
+
+  showModal = false;
 
   constructor(
     private readonly drawingService: DrawingService,
@@ -583,10 +587,23 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
    * Canvas leeren
    */
   clear(): void {
-    if (confirm('Möchten Sie wirklich die gesamte Zeichnung löschen?')) {
-      this.drawingService.clearCanvas();
-      this.clearCanvas();
-    }
+    this.showModal = true;
+  }
+
+  /**
+   * Bestätigt das Löschen des Canvas
+   */
+  onConfirmClear(): void {
+    this.drawingService.clearCanvas();
+    this.clearCanvas();
+    this.showModal = false;
+  }
+
+  /**
+   * Bricht das Löschen des Canvas ab
+   */
+  onCancelClear(): void {
+    this.showModal = false;
   }
 
   /**
