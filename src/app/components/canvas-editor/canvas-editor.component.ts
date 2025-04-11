@@ -240,6 +240,106 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   }
 
   /**
+   * Tastaturkürzel für Werkzeuge und Aktionen:
+   * Alt+1: Pinsel
+   * Alt+2: Radierer
+   * Alt+3: Text
+   * Alt+4: Linie
+   * Alt+5: Rechteck
+   * Alt+6: Kreis
+   * Alt+7: Auswahl
+   * Alt+Z: Redo
+   * Alt+Y: Undo
+   * Entf: Lösche ausgewählte Objekte
+   * Alt+S: Speichern
+   */
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(event: KeyboardEvent): void {
+    // Ignorieren, wenn Texteingabe aktiv ist
+    if (this.isTextEditing) return;
+
+    // Entf-Taste für Löschen der Auswahl
+    if (event.key === 'Delete' && this.currentTool === 'select' && this.selectedLines.length > 0) {
+      this.deleteSelectedObjects();
+      event.preventDefault();
+      return;
+    }
+
+    // Nur Alt-Taste Kombinationen behandeln
+    if (event.altKey) {
+      switch (event.key) {
+        case '1':
+          this.selectTool('brush');
+          event.preventDefault();
+          break;
+        case '2':
+          this.selectTool('eraser');
+          event.preventDefault();
+          break;
+        case '3':
+          this.selectTool('text');
+          event.preventDefault();
+          break;
+        case '4':
+          this.selectTool('line');
+          event.preventDefault();
+          break;
+        case '5':
+          this.selectTool('rectangle');
+          event.preventDefault();
+          break;
+        case '6':
+          this.selectTool('circle');
+          event.preventDefault();
+          break;
+        case '7':
+          this.selectTool('select');
+          event.preventDefault();
+          break;
+        case 'z':
+        case 'Z':
+          this.redo();
+          event.preventDefault();
+          break;
+        case 'y':
+        case 'Y':
+          this.undo();
+          event.preventDefault();
+          break;
+        case 's':
+        case 'S':
+          this.saveDrawing();
+          event.preventDefault();
+          break;
+      }
+    }
+  }
+
+  /**
+   * Löscht alle aktuell ausgewählten Objekte
+   */
+  private deleteSelectedObjects(): void {
+    if (this.selectedLines.length === 0) return;
+
+    // Alle ausgewählten Objekte durchlaufen und löschen
+    for (const line of this.selectedLines) {
+      if (line.id) {
+        this.drawingService.deleteDrawingObject(line.id);
+      }
+    }
+
+    // Auswahl zurücksetzen
+    this.selectedLines = [];
+    this.selectedLine = null;
+
+    // Optional: Feedback anzeigen
+    this.showTooltip(`${this.selectedLines.length} Objekte gelöscht`, {
+      x: this.canvasWidth / 2,
+      y: this.canvasHeight / 2
+    });
+  }
+
+  /**
    * Fullscreen-Modus umschalten
    */
   toggleFullscreen(): void {

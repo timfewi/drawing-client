@@ -4,32 +4,32 @@
       <!-- Zeichenwerkzeuge -->
       <div class="tool-group drawing-tools">
         <button class="tool-button" (click)="selectTool('brush')" [class.active]="currentTool === 'brush'"
-          title="Pinsel">
+          title="Pinsel (Alt+1)">
           <i class="fa fa-paint-brush"></i>
         </button>
         <button class="tool-button" (click)="selectTool('eraser')" [class.active]="currentTool === 'eraser'"
-          title="Radierer">
+          title="Radierer (Alt+2)">
           <i class="fa fa-eraser"></i>
         </button>
         <!-- Text tool button -->
-        <button class="tool-button" (click)="selectTool('text')" [class.active]="currentTool === 'text'" title="Text">
+        <button class="tool-button" (click)="selectTool('text')" [class.active]="currentTool === 'text'" title="Text (Alt+3)">
           <i class="fa fa-font"></i>
         </button>
-        <button class="tool-button" (click)="selectTool('line')" [class.active]="currentTool === 'line'" title="Linie">
+        <button class="tool-button" (click)="selectTool('line')" [class.active]="currentTool === 'line'" title="Linie (Alt+4)">
           <i class="fa fa-minus"></i>
         </button>
         <button class="tool-button" (click)="selectTool('rectangle')" [class.active]="currentTool === 'rectangle'"
-          title="Rechteck">
+          title="Rechteck (Alt+5)">
           <i class="fa fa-square-o"></i>
         </button>
         <button class="tool-button" (click)="selectTool('circle')" [class.active]="currentTool === 'circle'"
-          title="Kreis">
+          title="Kreis (Alt+6)">
           <i class="fa fa-circle-o"></i>
         </button>
 
         <!-- Neues Auswahlwerkzeug -->
         <button class="tool-button" (click)="selectTool('select')" [class.active]="currentTool === 'select'"
-          title="Auswählen und Verschieben">
+          title="Auswählen und Verschieben (Alt+7)">
           <i class="fa fa-mouse-pointer"></i>
         </button>
       </div>
@@ -81,16 +81,16 @@
 
       <!-- Aktionen -->
       <div class="tool-group action-tools">
-        <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig">
+        <button class="action-button" (click)="undo()" [disabled]="!canUndo" title="Rückgängig (Alt+Y)">
           <i class="fa fa-undo"></i>
         </button>
-        <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederherstellen">
+        <button class="action-button" (click)="redo()" [disabled]="!canRedo" title="Wiederherstellen (Alt+Z)">
           <i class="fa fa-repeat"></i>
         </button>
         <button class="action-button" (click)="clear()" title="Löschen">
           <i class="fa fa-trash"></i>
         </button>
-        <button class="action-button" (click)="saveDrawing()" title="Speichern">
+        <button class="action-button" (click)="saveDrawing()" title="Speichern (Alt+S)">
           <i class="fa fa-save"></i>
         </button>
       </div>
