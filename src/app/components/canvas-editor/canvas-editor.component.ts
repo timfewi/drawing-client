@@ -298,12 +298,12 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
           break;
         case 'z':
         case 'Z':
-          this.redo();
+          this.undo();
           event.preventDefault();
           break;
         case 'y':
         case 'Y':
-          this.undo();
+          this.redo();
           event.preventDefault();
           break;
         case 's':
