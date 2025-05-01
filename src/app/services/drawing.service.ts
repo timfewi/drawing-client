@@ -29,7 +29,7 @@ export class DrawingService {
   private readonly CURRENT_DRAWING_KEY = 'drawing_app_current_drawing';
 
   // Settings Observable
-  private settingsSubject = new BehaviorSubject<DrawingSettings>({
+  private readonly settingsSubject = new BehaviorSubject<DrawingSettings>({
     backgroundColor: '#FFFFFF',
     tool: 'brush',
     color: '#000000',
@@ -39,7 +39,7 @@ export class DrawingService {
   });
 
   // Drawing Lines Observable (für Undo/Redo)
-  private linesSubject = new BehaviorSubject<DrawingLine[]>([]);
+  private readonly linesSubject = new BehaviorSubject<DrawingLine[]>([]);
 
   // Public Observables
   settings$ = this.settingsSubject.asObservable();
@@ -47,7 +47,7 @@ export class DrawingService {
 
   // Zeichnungszustand
   private currentLine: DrawingLine | null = null;
-  private undoStack: DrawingLine[][] = [];
+  private readonly undoStack: DrawingLine[][] = [];
   private redoStack: DrawingLine[][] = [];
 
   constructor(

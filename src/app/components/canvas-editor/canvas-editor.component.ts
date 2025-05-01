@@ -65,10 +65,10 @@ export class CanvasEditorComponent implements AfterViewInit, OnDestroy {
   isFullscreen = false;
 
   /** Subscription für Settings-Updates */
-  private settingsSubscription: Subscription;
+  private readonly settingsSubscription: Subscription;
 
   /** Subscription für Drawing-Updates */
-  private drawingSubscription: Subscription;
+  private readonly drawingSubscription: Subscription;
 
   /** Speichert den aktuellen Zeichnungszustand */
   private currentDrawingLines: DrawingLine[] = [];
